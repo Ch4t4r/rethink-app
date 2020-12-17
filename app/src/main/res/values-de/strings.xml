@@ -1,2 +1,170 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources></resources>
+<resources>
+    <string name="bsct_conn_conn_desc_allowed">erlaubt am <u>%1$s:%2$s</u> %3$s. </string>
+    <string name="bsct_conn_conn_desc_blocked">blockiert am <u>%1$s/%2$s</u> %3$s von </string>
+    <string name="univ_block_unknown_connections">Blockiere Verbindungen wenn die Quellapp unbekannt ist</string>
+    <string name="bsct_block_app">Blockiere <u>diese App</u> vom Verbinden zu dieser IP</string>
+    <string name="system_apps_warning">Manche Systemapps sind wichtig, damit das Gerät korrekt funktioniert. Blockiere diese nur, wenn du weißt, was du machst.</string>
+    <string name="system_components_warning">Manche Systemkomponenten sind wichtig, damit das Gerät korrekt funktioniert. Blockiere diese nur, wenn du weißt, was du machst.</string>
+    <string name="doh_brave_pro_configure_desc">Konfiguriere RethinkDNS Plus um Inhalte ab 18, Dating und Glückspiel, Malware, Spyware und vieles mehr zu blockieren.</string>
+    <string name="bsct_alert_message_clear_rules">Alle zu dieser App zugehörigen Regeln werden geleert</string>
+    <string name="univ_firewall_dialog_message">Das Löschen dieser Regel würde es jeder App erlauben, sich mit dieser IP zu verbinden. Möchtest du fortfahren\?</string>
+    <string name="univ_firewall_no_ip_message">Keine IPs blockiert. Klicke auf Einträge im Netzwerkprotokoll, um individuelle IP Adressen zu blockieren.</string>
+    <string name="univ_delete_firewall_dialog_message">Das Löschen dieser Regeln würde jeder Anwendung erlauben, zu den aktuell blockierten IPs zu verbinden.</string>
+    <string name="doh_custom_url_remove_dialog_message">Lösche den DNS-over-HTTPS Endpunkt von der gespeicherten Konfiguration.</string>
+    <string name="about_bravedns_whoarewe">RethinkDNS ist ein kostenloses Open-Source Projekt, geleitet von Ex-Ingenieuren von Amazon, IBM und Scientific Games.</string>
+    <string name="about_bravedns_toreport_text">um Fehler zu melden und Features vorzuschlagen.</string>
+    <string name="dns_query_clear_logs_message">Dies löscht alle DNS Protokolle. Dies kann nicht rückgängig gemacht werden. Möchtest du fortfahren\?</string>
+    <string name="dns_query_clear_logs_title">Alle DNS Protokolle löschen\?</string>
+    <string name="webview_no_stamp_change_desc">Aktuell sind %1$s Blocklisten in Benutzung. Keine zusätzlichen Blocklisten wurden gesetzt. Möchtest du trotzdem beenden\?</string>
+    <string name="webview_no_stamp_change_remote">Keine Änderungen in der aktuellen Konfiguration. Möchtest du trotzdem beenden\?</string>
+    <string name="refresh_complete">Synchronisieren von Anwendungslisten ist abgeschlossen.</string>
+    <string name="dns_proxy_no_proxy">Erstelle einen DNS Proxy durch Klicken auf den Hinzufügenknopf weiter unten.</string>
+    <string name="show_logs_disabled_dns_message">Protokollierung von DNS-Verbindungen ist deaktiviert. Um diese zu aktivieren, gehe zu Einstellungen-&gt;Generell und aktiviere DNS und Firewall Protokolle</string>
+    <string name="show_logs_disabled_network_message">Protokollierung von Netzwerkverbindungen ist deaktiviert. Um diese zu aktivieren, gehe zu Einstellungen-&gt;Generell und aktiviere DNS und Firewall Protokolle</string>
+    <string name="firewall_app_added_in_whitelist">App auf der Whitelist</string>
+    <string name="firewall_app_added_in_excluded_list">exkludierte App</string>
+    <string name="dns_logs_not_available_text">Protokolle werden nicht gespeichert, wenn Rethink zu einem DNS Proxy verbunden ist.</string>
+    <string name="download_update_dialog_message">Eine neue Version der App ist zum Herunterladen verfügbar. Möchtest du fortfahren\?</string>
+    <string name="download_update_dialog_failure_message">Entweder sind unsere Server nicht verfügbar, oder die Verbindung konnte nicht aufgebaut werden. Bitte probiere es später erneut.</string>
+    <string name="search_firewall_network_log"><font size="12">Search Apps oder IP\'s</font></string>
+    <string name="search_firewall_all_apps"><font size="12">Suche apps</font></string>
+    <string name="search_dns_logs"><font size="12">Nach DNS Anfragen oder IPs suchen</font></string>
+    <string name="search_universal_ips"><font size="12">Nach IP suchen</font></string>
+    <string name="webview_error_message">Etwas ist fehlgeschlagen. Bitte probiere es später erneut.</string>
+    <string name="local_blocklist_download_desc">Blocklisten herunterladen (ungefähr 40MB) um dieses Feature zu nutzen\?</string>
+    <string name="doh_brave_pro_configure">Konfiguriere RethinkDNS Plus</string>
+    <string name="dns_crypt_url_remove_success">DNSCrypt Resolver gelöscht.</string>
+    <string name="dns_crypt_custom_url_remove_dialog_title">DNSCrypt Resolver löschen\?</string>
+    <string name="dns_crypt_url_remove_dialog_message">Lösche den DNSCrypt Resolver von gespeicherter Konfiguration.</string>
+    <string name="dns_crypt_relay_remove_dialog_message">Lösche das DNSCrypt Relay von gespeicherter Konfiguration.</string>
+    <string name="dns_proxy_remove_dialog_message">Lösche den DNS Proxy vom gespeicherter Konfiguration.</string>
+    <string name="dns_proxy_remove_success">DNS Proxy gelöscht.</string>
+    <string name="dns_proxy_remove_dialog_title">DNS Proxy löschen\?</string>
+    <string name="dns_crypt_relay_remove_success">DNSCrypt Relay gelöscht.</string>
+    <string name="dns_crypt_relay_remove_dialog_title">DNSCrypt Relay löschen\?</string>
+    <string name="private_dns_toast">Private DNS ist in den Android Netzwerkeinstellung aktiviert</string>
+    <string name="bsct_firewall_not_available_excluded">Ausgenommene Apps können nicht blockiert werden.</string>
+    <string name="bsct_firewall_not_available_whitelist">Apps auf der Whitelist können nicht blockiert werden.</string>
+    <string name="bsct_rules_cleared_toast">Alle Regeln zu dieser App wurden geleert</string>
+    <string name="bsct_alert_message_clear_rules_heading">Regeln leeren</string>
+    <string name="custom_url_added_successfully">Neuer benutzerdefinierter Endpunkt hinzugefügt.</string>
+    <string name="custom_url_error_invalid_url">Ungültige URL</string>
+    <string name="custom_url_error_host_failed">Verbindung zum Host fehgeschlagen. Probiere es erneut.</string>
+    <string name="dns_mode_4_explanation">Setze deinen eigenen DNS-over-HTTPS Endpunkt.</string>
+    <string name="dns_mode_3_explanation">Blockiert Malware und mehr. Nutzt RethinkDNSs nicht-einstellbaren basic Endpunkt.</string>
+    <string name="dns_mode_2_explanation">Blockiert böswillige Inhalte. Nutzt Cloudflares\' 1.1.1.2 DNS Endpunkt.</string>
+    <string name="dns_mode_1_explanation">Blockiert Malware und Inhalte ab 18. Nutzt Cloudflares\' 1.1.1.3 DNS Endpunkt.</string>
+    <string name="dns_mode_0_explanation">Blockiert keine DNS Anfragen. Nutzt Cloudflares\' 1.1.1.1 DNS Endpunkt.</string>
+    <string name="dns_mode_5">RethinkDNS Plus</string>
+    <string name="dns_mode_4">Benutzerdefiniert</string>
+    <string name="dns_mode_3">RethinkDNS Basic</string>
+    <string name="dns_mode_2">Sicherheit</string>
+    <string name="dns_mode_1">Familie</string>
+    <string name="dns_mode_0">Kein Filter</string>
+    <string name="brave_dns_connect_mode_change_connection">Starte Firewall / DNS+Firewall umNetzwerkprotokolle anzusehen.</string>
+    <string name="brave_dns_connect_mode_change_dns">Starte Firewall / DNS+Firewall um DNS einzustellen.</string>
+    <string name="brave_dns_connect_mode_change_firewall">Starte Firewall / DNS+Firewall um Firewall zu konfigurieren.</string>
+    <string name="brave_dns_connect_prompt_query">Starte Firewall / DNS+Firewall um Protokolle anzusehen</string>
+    <string name="brave_dns_connect_prompt_firewall">Starte Firewall / DNS+Firewall um Apps einzustellen.</string>
+    <string name="alert_permission_accessibility">Berechtigungen - Bedienungshilfen</string>
+    <string name="hybrid_mode_info_title">DNS + Firewall</string>
+    <string name="firewall_mode_info_title">Firewall</string>
+    <string name="firewall_rules">Firewall Regeln</string>
+    <string name="dns_mode_info_title">DNS</string>
+    <string name="accessibility_service_label">RethinkDNS</string>
+    <string name="whats_new_version_name">BraveDNS ist nun RethinkDNS</string>
+    <string name="download_update_dialog_failure_title">Etwas ist fehlgeschlagen!</string>
+    <string name="download_update_dialog_message_ok">Du besitzt bereits die neuste Version.</string>
+    <string name="download_update_dialog_message_ok_title">Up-to-date!</string>
+    <string name="download_update_dialog_title">Neues Update!</string>
+    <string name="univ_firewall_rules_6">Sämtlichen UDP Traffik außer DNS blockieren</string>
+    <string name="http_proxy_dialog_heading">HTTP(S) Proxy setzen</string>
+    <string name="configure_dns_connection_name">Verbunden z</string>
+    <string name="configure_dns_connected_dns_proxy_status">dns proxy</string>
+    <string name="configure_dns_connected_dns_crypt_status">dnscrypt</string>
+    <string name="configure_dns_connected_doh_status">dns over https</string>
+    <string name="webview_error_title">Fehler</string>
+    <string name="webview_no_stamp_change_title">Beenden\?</string>
+    <string name="local_blocklist_download">Blocklisten herunterladen</string>
+    <string name="doh_custom_url_remove_success">Endpunkt gelöscht.</string>
+    <string name="doh_custom_url_remove_dialog_title">DoH Endpunkt löschen\?</string>
+    <string name="univ_delete_firewall_dialog_title">Alle IP Regeln löschen\?</string>
+    <string name="univ_firewall_dialog_title">IP Regel löschen\?</string>
+    <string name="dns_act_log">Protokolle</string>
+    <string name="dns_act_configure_tab">Einstellen</string>
+    <string name="firewall_act_network_monitor_tab">Netzwerkprotokoll</string>
+    <string name="firewall_act_apps_tab">Alle Apps</string>
+    <string name="firewall_act_universal_tab">Universell</string>
+    <string name="always_on_dialog_positive_btn">Zu Einstellungen gehen</string>
+    <string name="always_on_dialog_negative_btn">Abbrechen</string>
+    <string name="always_on_dialog_heading">Immer-an VPN deaktivieren</string>
+    <string name="bsct_conn_block_desc">%1$s %2$s blockiert</string>
+    <string name="bsct_block">Blockiere <u>diese App</u> vom Verbinden zum Internet</string>
+    <string name="bsct_block_all">Blockiere <u>alle Apps</u> vom Verbinden zu <u>dieser IP</u></string>
+    <string name="bsct_clear">Alle Reggeln löschen</string>
+    <string name="bsct_app_info">App Info</string>
+    <string name="bsct_kill">App beenden</string>
+    <string name="filter_network_all_connections">Alle Verbindungen</string>
+    <string name="filter_network_blocked_connections">Blockierte Verbindungen</string>
+    <string name="filter_dns_all_connections">Alle Verbindungen</string>
+    <string name="filter_dns_blocked_connections">Blockierte Anfragen</string>
+    <string name="conn_track_clear_logs_title">Alle Netzwerkprotokolle löschen\?</string>
+    <string name="about_app_update_check">Auf Appupdates überprüfen</string>
+    <string name="about_mozilla">RethinkDNS ist Teil der Mozilla Builders MVP Programms.</string>
+    <string name="about_twitter">Folge uns auf Twitter</string>
+    <string name="about_whats_new">Was gibts\' neues</string>
+    <string name="about_email">Schreib\' uns eine Email</string>
+    <string name="about_connect">Kontakt</string>
+    <string name="about_blog">Unseren Blog lesen</string>
+    <string name="about_faq">FAQs ansehen</string>
+    <string name="about_github">Auf GitHub etwas beitragen</string>
+    <string name="about_website">Besuche rethinkdns.com</string>
+    <string name="about_web">Links</string>
+    <string name="about_join_telegram">Trete der RethinkDNS Gruppe auf Telegram bei</string>
+    <string name="dns_explanation_disconnected" description="This message will be shown to user in main screen when the DNS is not connected">von rethinkdns und firewall getrennt</string>
+    <string name="dns_explanation_connected" description="The message will be shown when the DNS is connected">zur firewall und rethinkdns verbunden</string>
+    <string name="dns_explanation_firewall_connected">zur firewall verbunden</string>
+    <string name="dns_explanation_dns_connected">zu rethinkdns verbunden</string>
+    <string name="explanation_exposed" description="Expanded form of status_exposed">Deine Verbindung ist offen für DNS-Attacken.</string>
+    <string name="status_exposed" description="This is a large message in a scary color.  It indicates that DNS queries can be surveilled or modified in transit.">nicht geschützt</string>
+    <string name="explanation_strict" description="Explanation on the main screen for users who have Private DNS strict mode enabled at the OS level.">RethinkDNS hat erkannt, dass Private DNS vom System aktiv ist. Dies bedeutet, dass deine Anfragen bereits geschützt sind, es ist also nicht nötig, Rethink zu aktivieren.</string>
+    <string name="status_strict" description="This is similar to dns_on, but the protection is being provided by the operating system, not by Rethink.  It is not color-highlighted.">Private DNS ist aktiv</string>
+    <string name="explanation_upgraded" description="Corresponds to status_upgraded.">Deine Verbindung ist aktuell von Private DNS geschützt, ein Angreifer könnte diesen Schutz deaktivieren oder untergraben.</string>
+    <string name="explanation_protected" description="Expanded form of status_protected">Deine Verbindung ist vor DNS-Attacken geschützt.</string>
+    <string name="status_protected" description="This is a large message in a reassuring color.  It indicates that DNS queries can't be surveilled or modified in transit.">geschützt</string>
+    <string name="explanation_starting" description="Corresponds to status_starting">Warte kurz. RethinkDNS baut eine Serververbindung auf.</string>
+    <string name="status_starting" description="This text briefly appears while starting.">starte</string>
+    <string name="explanation_failing">Achtung: Anfragen schlagen fehl. Möglicherweise möchtest du einen anderen Server wählen, oder RethinkDNS neustarten.</string>
+    <string name="explanation_vpn" description="Warning text shown on the main screen before the user starts Intra">RethinkDNS hat einen anderes VPN auf einem Gerät erkannt. Wenn du Rethink aktivierst, wird dieses VPN deaktiviert. RethinkDNS bietet nicht den gleichen Schutz wie ein vertrauenswürdiges VPN.</string>
+    <string name="explanation_offline" description="Status indicator shown when there is no network connection.">Dein Gerät ist offline. RethinkDNS wartet auf eine Netzwerkverbindung.</string>
+    <string name="status_failing" description="This text appears if the connection is currently not working correctly. [CHAR_LIMIT=NONE]">fehlgeschlagen</string>
+    <string name="status_waiting" description="This text appears during the connection process if Intra needs user permission or the phone is offline.">warte</string>
+    <string name="hybrid_mode_notification_title">Geschützt! Zu DNS + Firewall verbunden.</string>
+    <string name="firewall_mode_notification_title">Geschützt! Zur Firewall verbunden.</string>
+    <string name="dns_mode_notification_title">Geschützt! Zu schnellem und sicherem DNS verbunden.</string>
+    <string name="notification_title" description="Status indicator text shown in a persistent notification.">Geschützt! Zu schnellem und sicherem DNS verbunden.</string>
+    <string name="warning_channel_description" description="This is the explanatory text describing the 'Warning' notification class.  It's   only visible in the system's advanced notifications settings page.">Wird angezeigt, wenn RethinkDNS ein Problem hat.</string>
+    <string name="warning_channel_name" description="This is the name of the class of notifications that show warnings.  It's only   visible in the system's advanced notifications settings page.">Warnung</string>
+    <string name="notification_content" description="Indicates what will happen if the user taps the notification.">Klicke hier um Schutzeinstellungen zu ändern</string>
+    <string name="warning_title" description="Status indicator text shown in a warning notification.">Warnung: RethinkDNS wurde deaktiviert</string>
+    <string name="slide_1_desc">Sag hallo zu einem sicheren und transparenterem Android.</string>
+    <string name="slide_1_title">Willkommen</string>
+    <string name="slide_2_desc">RethinkDNS ist der einfachste Weg um Appaktivitäten zu überwachen, Internetzensur zu umgehen und Apps durch eine Firewall zu sperren.</string>
+    <string name="slide_2_title">Willkommen</string>
+    <string name="skip">Überspringen</string>
+    <string name="next">Weiter</string>
+    <string name="accessibility_service_description">RethinkDNS benutzt die Services zur Bedienungshilfe, um im Hintergrund laufende Apps zu erkennen und zu blockieren. RethinkDNS sammelt und verkauft keine Daten.</string>
+    <string name="admin_receiver_status_disabled">Inhaltsblocker nicht weiter aktiv.</string>
+    <string name="admin_receiver_status_enabled">Bereit DNS-basierten Inhaltsblocker zu setzen.</string>
+    <string name="txt_home">Home</string>
+    <string name="action_do_nothing">Nichts tun</string>
+    <string name="action_revoke_only">Automatisch entziehen</string>
+    <string name="action_automatic">Automatisch entfernen und gewähren</string>
+    <string name="txt_im_tip">Tipp: Die Firewall hinder Apps daran, über WLAN oder mobile Daten auf das Internet zuzugreifen. Da fast alle Formen der Überwachung eine Datenübertragung zu einer zentralen Stelle benötigen, behebt eine Sperrung dieser Apps die Bedrohung effektiv.
+\n
+\nEs gibt eine Kategorie von Apps, welche Internetverbindungen den ganzen Tag über benötigen, dies sind typischerweise Kommunikationsapps wie GMail oder Messenger wie WhatsApp. Diesen das Recht zur Datenübertragung zu entziehen ist meist keine Option, darum haben wir Inhaltsblocker gebaut.</string>
+    <string name="txt_im_topic">Internetmanager</string>
+    <string name="title_settings">Einstellungen</string>
+    <string name="title_about">Über diese App</string>
+</resources>
