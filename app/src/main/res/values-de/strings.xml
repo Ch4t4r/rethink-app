@@ -167,4 +167,10 @@
     <string name="txt_im_topic">Internetmanager</string>
     <string name="title_settings">Einstellungen</string>
     <string name="title_about">Über diese App</string>
+    <string name="dns_mode_5_explanation">Einstellbarere DNS Endpunkt: Stellt eine tiefgehende Analyze deines Internetverkehrs bereit, was es dir unter anderem erlaubt eigene Regeln zu setzen.</string>
+    <string name="about_bravedns_explantion">RethinkDNS ist der einfachste Weg Appaktivitäten zu überwachen, Internetzensur zu umgehen und Apps auf deinem Gerät durch eine Firewall zu verwalten.</string>
+    <string name="http_proxy_dialog_desc">HTTP(S) Proxyeinstellungen sind nur ein Hinweis für Anwendungen, welchen diese nicht benutzen müssen; Browser wie Chrome oder Firefox tun dies allerdings.</string>
+    <string name="network_queries_explanation_text" description="Explanation on the main screen for the users about network queries">Siehe dir die DNS Anfragen des Geräts an. Typischerweise wird pro Verbindung zum Internet eine Anfrage verschickt: Zum Beispiel kann das Laden einer Webseite ein vielfaches von Zehn DNS Anfragen generieren.</string>
+    <string name="app_mgr_explanation_text" description="Explanation on the main screen for the users about what the application manager does.">Prüfe welche Apps deine Daten verbrauchen. Streamline dein Android Smartphone oder Tablet. Deinstalliere mehrere unerwünschte Anwendungen schnell und einfach.</string>
+    <string name="firewall_explanation_text" description="Explanation on the main screen for the users about what the firewall does.">Blockiere Apps oder eine Kategorie von Apps davon, sich abhängig von Geräteereignissen mit dem Internet zu verbinden: Das Einschränken des Zugriffs hilft dabei den Datenverbrauch zu senken und Batterie zu sparen.</string>
 </resources>
