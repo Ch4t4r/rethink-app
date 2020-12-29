@@ -1,2 +1,31 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources></resources>
+<resources>
+    <string name="status_starting" description="This text briefly appears while starting.">启动中</string>
+    <string name="explanation_failing">警告：解析请求失败。您可能想要选择另外的服务器或重启Intra。</string>
+    <string name="explanation_vpn" description="Warning text shown on the main screen before the user starts Intra">RethinkDNS检测到了已在您设备上使用的另一个VPN。如果您启用Rethink，另一个VPN将会被禁用。RethinkDNS并不如可信的VPN安全。</string>
+    <string name="explanation_offline" description="Status indicator shown when there is no network connection.">您的设备未连网。RethinkDNS正在等待网络连接。</string>
+    <string name="hybrid_mode_notification_title">已保护！已连接至DNS及防火墙。</string>
+    <string name="firewall_mode_notification_title">已保护！已对接防火墙。</string>
+    <string name="dns_mode_notification_title">已保护！已连接至快速安全的DNS。</string>
+    <string name="notification_title" description="Status indicator text shown in a persistent notification.">已保护！已连接至快速安全的DNS。</string>
+    <string name="warning_channel_description" description="This is the explanatory text describing the 'Warning' notification class.  It's   only visible in the system's advanced notifications settings page.">当RethinkDNS遇到问题时显示。</string>
+    <string name="warning_channel_name" description="This is the name of the class of notifications that show warnings.  It's only   visible in the system's advanced notifications settings page.">警告</string>
+    <string name="notification_content" description="Indicates what will happen if the user taps the notification.">点击以更改防护设置</string>
+    <string name="warning_title" description="Status indicator text shown in a warning notification.">警告：RethinkDNS已被停用</string>
+    <string name="slide_1_desc">欢迎来到更安全、更透明的Android。</string>
+    <string name="slide_1_title">欢迎</string>
+    <string name="slide_2_desc">RethinkDNS是您在Android设备上监控应用活动、绕过网络审查及拦截应用的最简单工具。</string>
+    <string name="slide_2_title">欢迎</string>
+    <string name="skip">跳过</string>
+    <string name="next">下一步</string>
+    <string name="accessibility_service_label">RethinkDNS</string>
+    <string name="accessibility_service_description">RethinkDNS使用无障碍服务来检测与拦截后台应用。RethinkDNS不收集或销售任何数据。</string>
+    <string name="admin_receiver_status_disabled">内容拦截器不再有效。</string>
+    <string name="admin_receiver_status_enabled">已准备好设置基于DNS的内容拦截器。</string>
+    <string name="txt_home">主页</string>
+    <string name="txt_im_tip">小贴士：防火墙可以阻止应用访问互联网，无论是在WLAN下还是在数据网络下。因为绝大多数监控方式需要将被收集的数据发送至一个中央服务器，所以将他们用防火墙阻隔能够非常有效地减弱其威胁。
+\n
+\n有一些诸如Gmail的通讯应用和Whatsapp的聊天应用需要全天候访问互联网。将它们用防火墙阻隔似乎并不是一个好选择，因此我们推出了内容拦截器。</string>
+    <string name="title_settings">设置</string>
+    <string name="title_about">关于</string>
+</resources>
