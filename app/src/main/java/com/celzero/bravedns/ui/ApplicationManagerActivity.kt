@@ -21,7 +21,6 @@ import android.app.ActivityManager
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
-import android.content.pm.ApplicationInfo
 import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
@@ -29,10 +28,12 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.SearchView
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.celzero.bravedns.BuildConfig
 import com.celzero.bravedns.R
 import com.celzero.bravedns.adapter.ApplicationManagerApk
 import com.celzero.bravedns.animation.ViewAnimation
 import com.celzero.bravedns.database.AppDatabase
+import com.celzero.bravedns.database.AppInfoRepository
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.mikepenz.fastadapter.FastAdapter
 import com.mikepenz.fastadapter.adapters.ItemAdapter
@@ -40,10 +41,15 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.koin.android.ext.android.inject
 
 
 class ApplicationManagerActivity : AppCompatActivity(), SearchView.OnQueryTextListener{
 
+    private lateinit var recycle : RecyclerView
+    private lateinit var itemAdapter: ItemAdapter<ApplicationManagerApk>
+    private lateinit var fastAdapter: FastAdapter<ApplicationManagerApk>
+    private val apkList = ArrayList<ApplicationManagerApk>()
     private lateinit var fabAddIcon : FloatingActionButton
     private lateinit var fabUninstallIcon : FloatingActionButton
     private lateinit var fabAppInfoIcon : FloatingActionButton
@@ -52,6 +58,7 @@ class ApplicationManagerActivity : AppCompatActivity(), SearchView.OnQueryTextLi
 
     private var isRotate : Boolean = false
 
+    private val appInfoRepository by inject<AppInfoRepository>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
 
@@ -64,8 +71,6 @@ class ApplicationManagerActivity : AppCompatActivity(), SearchView.OnQueryTextLi
     }
 
     private fun initView() {
-
-        context = this
         recycle = findViewById(R.id.application_manager_recycler_view)
         recycle.layoutManager = LinearLayoutManager(this)
 
@@ -107,44 +112,8 @@ class ApplicationManagerActivity : AppCompatActivity(), SearchView.OnQueryTextLi
         fabAppInfoIcon.setOnClickListener{
             val list = ApplicationManagerApk.getAddedList(this)
             if(list.size >= 1){
-                list.get(list.size - 1).packageName?.let { it1 -> appInfoForPackage(it1) }
+                list[list.size - 1].packageName?.let { it1 -> appInfoForPackage(it1) }
             }
-        }
-    }
-
-
-    companion object{
-        private lateinit var recycle : RecyclerView
-        lateinit var itemAdapter: ItemAdapter<ApplicationManagerApk>
-        private lateinit var fastAdapter: FastAdapter<ApplicationManagerApk>
-        private lateinit var context : Context
-        private val apkList = ArrayList<ApplicationManagerApk>()
-        fun updateUI(packageName : String, isAdded : Boolean){
-            fastAdapter = FastAdapter.with(itemAdapter)
-            if(isAdded){
-                val packageInfo = context.packageManager.getPackageInfo(packageName,0)
-                ApplicationInfo.getCategoryTitle(context,packageInfo.applicationInfo.category)
-                if(packageInfo.packageName != "com.celzero.bravedns" ) {
-                    val userApk =  ApplicationManagerApk(packageInfo, "", context)
-                    apkList.add(userApk)
-                }
-            }else{
-                var apkDetail : ApplicationManagerApk? = null
-                apkList.forEach {
-                    if(it.packageName.equals(packageName)) {
-                        apkDetail = it
-                    }
-                }
-                if(apkDetail != null) {
-                    //Log.d(LOG_TAG,"apkDetail Removed  :-" + packageName)
-                    apkList.remove(apkDetail!!)
-                }
-            }
-            itemAdapter.clear()
-            recycle.adapter = fastAdapter
-            itemAdapter.add(apkList)
-            fastAdapter.notifyAdapterDataSetChanged()
-            fastAdapter.notifyDataSetChanged()
         }
     }
 
@@ -156,7 +125,7 @@ class ApplicationManagerActivity : AppCompatActivity(), SearchView.OnQueryTextLi
     }
 
     private fun appInfoForPackage(packageName : String){
-        val activityManager : ActivityManager = context.getSystemService(Activity.ACTIVITY_SERVICE) as ActivityManager
+        val activityManager : ActivityManager = getSystemService(Activity.ACTIVITY_SERVICE) as ActivityManager
         activityManager.killBackgroundProcesses(packageName)
 
         try {
@@ -173,13 +142,11 @@ class ApplicationManagerActivity : AppCompatActivity(), SearchView.OnQueryTextLi
 
 
     private fun updateAppList() = GlobalScope.launch ( Dispatchers.Default ){
-        val mDb = AppDatabase.invoke(context.applicationContext)
-        val appInfoRepository = mDb.appInfoRepository()
         val appList = appInfoRepository.getAppInfoAsync()
         appList.forEach{
             val packageInfo = packageManager.getPackageInfo(it.packageInfo,0)
-            if(packageInfo.packageName != "com.celzero.bravedns" ) {
-                val userApk =  ApplicationManagerApk(packageManager.getPackageInfo(it.packageInfo, 0), it.appCategory, context)
+            if(packageInfo.packageName != BuildConfig.APPLICATION_ID ) {
+                val userApk =  ApplicationManagerApk(packageManager.getPackageInfo(it.packageInfo, 0), it.appCategory, this@ApplicationManagerActivity)
                 apkList.add(userApk)
             }
         }

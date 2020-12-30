@@ -1,18 +1,18 @@
 /*
-Copyright 2020 RethinkDNS and its authors
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-https://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
+ * Copyright 2020 RethinkDNS and its authors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package com.celzero.bravedns.ui
 
 import android.app.Activity
@@ -40,12 +40,9 @@ import androidx.appcompat.widget.AppCompatImageView
 import androidx.appcompat.widget.AppCompatTextView
 import androidx.appcompat.widget.SwitchCompat
 import androidx.fragment.app.Fragment
-import androidx.fragment.app.viewModels
-import androidx.lifecycle.Observer
 import com.celzero.bravedns.R
 import com.celzero.bravedns.adapter.ExcludedAppListAdapter
-import com.celzero.bravedns.database.AppDatabase
-import com.celzero.bravedns.database.ProxyEndpoint
+import com.celzero.bravedns.database.*
 import com.celzero.bravedns.service.PersistentState
 import com.celzero.bravedns.ui.HomeScreenActivity.GlobalVariable.DEBUG
 import com.celzero.bravedns.ui.HomeScreenActivity.GlobalVariable.appList
@@ -57,7 +54,6 @@ import com.celzero.bravedns.util.Constants.Companion.DOWNLOAD_SOURCE_OTHERS
 import com.celzero.bravedns.util.Constants.Companion.LOG_TAG
 import com.celzero.bravedns.util.Constants.Companion.REFRESH_BLOCKLIST_URL
 import com.celzero.bravedns.util.HttpRequestHelper.Companion.checkStatus
-import com.celzero.bravedns.util.RefreshDatabase
 import com.celzero.bravedns.util.Utilities
 import com.celzero.bravedns.viewmodel.ExcludedAppViewModel
 import com.google.android.material.switchmaterial.SwitchMaterial
@@ -68,6 +64,9 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import okhttp3.*
 import org.json.JSONObject
+import org.koin.android.ext.android.get
+import org.koin.android.ext.android.inject
+import org.koin.androidx.viewmodel.ext.android.viewModel
 import settings.Settings
 import java.io.File
 import java.io.IOException
@@ -95,6 +94,9 @@ class SettingsFragment : Fragment() {
 
     private lateinit var refreshDataImg: AppCompatImageView
     private lateinit var refreshDataDescTxt: TextView
+
+    private lateinit var vpnSettingsHeadingTV  :TextView
+    private lateinit var vpnSettingsHeadingDesc : TextView
 
     private lateinit var enableLogsSwitch: SwitchCompat
     private lateinit var autoStartSwitch: SwitchCompat
@@ -127,14 +129,18 @@ class SettingsFragment : Fragment() {
 
     //For exclude apps dialog
     private var excludeAppAdapter: ExcludedAppListAdapter? = null
-    private val excludeAppViewModel: ExcludedAppViewModel by viewModels()
+    private val excludeAppViewModel: ExcludedAppViewModel by viewModel()
     private lateinit var excludeListCountText: TextView
 
-    private lateinit var refreshDatabase: RefreshDatabase
+    private val refreshDatabase by inject<RefreshDatabase>()
     private lateinit var animation: Animation
 
     private lateinit var downloadManager: DownloadManager
 
+    private val appInfoRepository by inject<AppInfoRepository>()
+    private val proxyEndpointRepository by inject<ProxyEndpointRepository>()
+    private val categoryInfoRepository by inject<CategoryInfoRepository>()
+    private val persistentState by inject<PersistentState>()
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
         val view: View = inflater.inflate(R.layout.activity_settings_screen, container, false)
@@ -159,7 +165,6 @@ class SettingsFragment : Fragment() {
         animation.repeatCount = -1
         animation.duration = 1000
 
-        refreshDatabase = RefreshDatabase(requireContext())
         faqTxt = view.findViewById(R.id.settings_app_faq_icon)
 
         refreshDataRL = view.findViewById(R.id.settings_activity_refresh_data_rl)
@@ -168,13 +173,15 @@ class SettingsFragment : Fragment() {
         autoStartRL = view.findViewById(R.id.settings_activity_auto_start_rl)
         killAppRL = view.findViewById(R.id.settings_activity_kill_app_rl)
         allowByPassRL = view.findViewById(R.id.settings_activity_allow_bypass_rl)
-        //alwaysOnRL = view.findViewById(R.id.settings_activity_always_on_vpn_rl)
         socks5RL = view.findViewById(R.id.settings_activity_socks5_rl)
         excludeAppsRL = view.findViewById(R.id.settings_activity_exclude_apps_rl)
         excludeListCountText = view.findViewById(R.id.settings_activity_exclude_apps_count_text)
         //blockUnknownConnRL = view.findViewById(R.id.settings_activity_block_unknown_rl)
         onDeviceBlockListRL = view.findViewById(R.id.settings_activity_on_device_block_rl)
+        vpnSettingsHeadingTV = view.findViewById(R.id.settings_activity_vpn_heading_text)
         dnsSettingsHeading = view.findViewById(R.id.settings_heading_dns)
+
+        vpnSettingsHeadingDesc = view.findViewById(R.id.settings_activity_vpn_lockdown_desc)
 
         refreshDataImg = view.findViewById(R.id.settings_activity_refresh_data_img)
 
@@ -185,7 +192,7 @@ class SettingsFragment : Fragment() {
         allowByPassDescText = view.findViewById(R.id.settings_activity_allow_bypass_desc)
         allowByPassProgressBar = view.findViewById(R.id.settings_activity_allow_bypass_progress)
         allowByPassProgressBar.visibility = View.GONE
-        //alwaysOnSwitch = view.findViewById(R.id.settings_activity_always_on_vpn_switch)
+
         socks5Switch = view.findViewById(R.id.settings_activity_socks5_switch)
         socks5Progress = view.findViewById(R.id.settings_activity_socks5_progress)
         httpProxySwitch = view.findViewById(R.id.settings_activity_http_proxy_switch)
@@ -204,17 +211,17 @@ class SettingsFragment : Fragment() {
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             httpProxyContainer.visibility = View.VISIBLE
-            httpProxySwitch.isChecked = PersistentState.getHttpProxyEnabled(requireContext())
+            httpProxySwitch.isChecked = persistentState.httpProxyEnabled
             if (httpProxySwitch.isChecked) {
-                httpProxyDescText.text = "Forwarding to ${PersistentState.getHttpProxyHostAddress(requireContext())}:${PersistentState.getHttpProxyPort(requireContext())}"
+                httpProxyDescText.text = "Forwarding to ${persistentState.httpProxyHostAddress}:${persistentState.httpProxyPort}"
             }
         } else {
             httpProxyContainer.visibility = View.GONE
         }
-        allowByPassSwitch.isChecked = PersistentState.getAllowByPass(requireContext())
-        timeStamp = PersistentState.getLocalBlockListDownloadTime(requireContext())
+        allowByPassSwitch.isChecked = persistentState.allowByPass
+        timeStamp = persistentState.localBlockListDownloadTime
 
-        if(PersistentState.getDownloadSource(requireContext()) == DOWNLOAD_SOURCE_OTHERS){
+        if(persistentState.downloadSource == DOWNLOAD_SOURCE_OTHERS){
             onDeviceBlockListRL.visibility = View.VISIBLE
             dnsSettingsHeading.visibility = View.VISIBLE
         }else{
@@ -222,7 +229,7 @@ class SettingsFragment : Fragment() {
             dnsSettingsHeading.visibility = View.GONE
         }
 
-        localDownloadComplete.observe(viewLifecycleOwner, Observer {
+        localDownloadComplete.observe(viewLifecycleOwner, {
             if (it == 1) {
                 if(DEBUG) Log.d(LOG_TAG, "Observer log")
                 downloadInProgress = 1
@@ -233,40 +240,48 @@ class SettingsFragment : Fragment() {
                 onDeviceBlockListSwitch.visibility = View.VISIBLE
                 onDeviceBlockListSwitch.isChecked = true
                 onDeviceBlockListDesc.text = "Download completed, Configure blocklist"
-                onDeviceLastUpdatedTime.text = Utilities.convertLongToRelativeTime(timeStamp)
+                onDeviceLastUpdatedTime.text = "Version: v${Utilities.convertLongToDate(timeStamp)}"
                 localDownloadComplete.postValue(0)
+            }
+        })
+
+        HomeScreenActivity.GlobalVariable.braveModeToggler.observe(viewLifecycleOwner, {
+            if (HomeScreenActivity.GlobalVariable.braveMode == HomeScreenFragment.DNS_MODE) {
+                //disableDNSRelatedUI()
+            } else if (HomeScreenActivity.GlobalVariable.braveMode == HomeScreenFragment.FIREWALL_MODE) {
+                disableDNSRelatedUI()
+            } else if (HomeScreenActivity.GlobalVariable.braveMode == HomeScreenFragment.DNS_FIREWALL_MODE) {
+                enableDNSFirewallUI()
             }
         })
 
         configureBlockListBtn = view.findViewById(R.id.settings_activity_on_device_block_configure_btn)
         refreshOnDeviceBlockListBtn = view.findViewById(R.id.settings_activity_on_device_block_refresh_btn)
 
-        val mDb = AppDatabase.invoke(requireContext().applicationContext)
-        val proxyEndpointRepository = mDb.proxyEndpointRepository()
         sock5Proxy = proxyEndpointRepository.getConnectedProxy()
 
-        enableLogsSwitch.isChecked = PersistentState.isLogsEnabled(requireContext())
-        autoStartSwitch.isChecked = PersistentState.getPrefAutoStartBootUp(requireContext())
-        killAppSwitch.isChecked = PersistentState.getKillAppOnFirewall(requireContext())
+        enableLogsSwitch.isChecked = persistentState.logsEnabled
+        autoStartSwitch.isChecked = persistentState.prefAutoStartBootUp
+        killAppSwitch.isChecked = persistentState.killAppOnFirewall
 
-        socks5Switch.isChecked = PersistentState.getSocks5Enabled(requireContext())
+        socks5Switch.isChecked = persistentState.socks5Enabled
         if (socks5Switch.isChecked) {
             val sock5Proxy = proxyEndpointRepository.getConnectedProxy()
             if (sock5Proxy?.proxyAppName != "Nobody") {
                 val appName = appList[sock5Proxy?.proxyAppName]?.appName
-                socks5DescText.text = "Forwarding to ${sock5Proxy!!.proxyIP}:${sock5Proxy!!.proxyPort}, $appName"
+                socks5DescText.text = "Forwarding to ${sock5Proxy!!.proxyIP}:${sock5Proxy.proxyPort}, $appName"
             } else {
-                socks5DescText.text = "Forwarding to ${sock5Proxy!!.proxyIP}:${sock5Proxy!!.proxyPort}, Nobody"
+                socks5DescText.text = "Forwarding to ${sock5Proxy.proxyIP}:${sock5Proxy.proxyPort}, Nobody"
             }
         }
         socks5Progress.visibility = View.GONE
 
-        //blockUnknownConnSwitch.isChecked = PersistentState.getBlockUnknownConnections(requireContext())
-        if (PersistentState.isLocalBlockListEnabled(requireContext())) {
+        //blockUnknownConnSwitch.isChecked = persistentState.getBlockUnknownConnections(requireContext())
+        if (persistentState.localBlocklistEnabled) {
             configureBlockListBtn.visibility = View.VISIBLE
             refreshOnDeviceBlockListBtn.visibility = View.VISIBLE
             onDeviceLastUpdatedTime.visibility = View.VISIBLE
-            onDeviceLastUpdatedTime.text = Utilities.convertLongToRelativeTime(timeStamp)
+            onDeviceLastUpdatedTime.text = "Version: v${Utilities.convertLongToDate(timeStamp)}"
             onDeviceBlockListSwitch.isChecked = true
         } else {
             configureBlockListBtn.visibility = View.GONE
@@ -277,19 +292,61 @@ class SettingsFragment : Fragment() {
         }
 
         //For exclude apps
-        ExcludedAppViewModel.setContext(requireContext())
-        excludeAppAdapter = ExcludedAppListAdapter(requireContext())
+        excludeAppAdapter = ExcludedAppListAdapter(requireContext(), appInfoRepository, categoryInfoRepository)
         excludeAppViewModel.excludedAppList.observe(viewLifecycleOwner, androidx.lifecycle.Observer(excludeAppAdapter!!::submitList))
 
 
-        val appInfoRepository = mDb.appInfoRepository()
         val appCount = appList.size
         val act: HomeScreenActivity = requireContext() as HomeScreenActivity
-        appInfoRepository.getExcludedAppListCountLiveData().observe(act, Observer {
+        appInfoRepository.getExcludedAppListCountLiveData().observe(act, {
             excludeListCountText.text = "$it/$appCount apps excluded."
         })
 
 
+    }
+
+    /**
+     * Enabled all the layouts and change the labels
+     * for the heading.
+     */
+    private fun enableDNSFirewallUI() {
+        dnsSettingsHeading.text  = getString(R.string.app_mode_dns)
+        onDeviceBlockListRL.isEnabled = true
+        onDeviceBlockListSwitch.isEnabled = true
+        refreshOnDeviceBlockListBtn.isEnabled = true
+        configureBlockListBtn.isEnabled = true
+    }
+
+    /**
+     * Disable all the layouts related with DNS
+     */
+    private fun disableDNSRelatedUI() {
+        dnsSettingsHeading.text  = getString(R.string.app_mode_dns) + getString(R.string.features_disabled)
+        onDeviceBlockListRL.isEnabled = false
+        onDeviceBlockListSwitch.isEnabled = false
+        refreshOnDeviceBlockListBtn.isEnabled = false
+        configureBlockListBtn.isEnabled = false
+    }
+
+    /**
+     * Disable all the layouts related to lockdown mode. like exclude apps and allow bypass
+     */
+    private fun disableForLockdownModeUI() {
+        vpnSettingsHeadingTV.text = getString(R.string.settings_vpn_heading)+" " + getString(R.string.features_disabled)
+        onDeviceBlockListRL.isEnabled = false
+        excludeAppsRL.isEnabled = false
+        allowByPassSwitch.isEnabled = false
+        excludeAppImg.isEnabled = false
+        vpnSettingsHeadingDesc.visibility = View.VISIBLE
+    }
+
+    private fun enableForLockdownModeUI(){
+        vpnSettingsHeadingTV.text = getString(R.string.settings_vpn_heading)
+        onDeviceBlockListRL.isEnabled = true
+        excludeAppsRL.isEnabled = true
+        allowByPassSwitch.isEnabled = true
+        excludeAppImg.isEnabled = true
+        vpnSettingsHeadingDesc.visibility = View.GONE
     }
 
     private fun detectLockDownMode() {
@@ -298,12 +355,12 @@ class SettingsFragment : Fragment() {
             val lockDown = android.provider.Settings.Secure.getInt(requireContext().contentResolver, "always_on_vpn_lockdown", 0)
             if (DEBUG) Log.d(LOG_TAG, "$FILE_LOG_TAG isLockDownEnabled - $lockDown , $alwaysOn")
             if (lockDown != 0 && context?.packageName == alwaysOn) {
-                allowByPassSwitch.isEnabled = false
-                allowByPassDescText.text = getString(R.string.settings_allow_bypass_lockdown_desc)
+                disableForLockdownModeUI()
             } else {
-                allowByPassSwitch.isEnabled = true
-                allowByPassDescText.text = getString(R.string.settings_allow_bypass_desc)
+                enableForLockdownModeUI()
             }
+        }else{
+            enableForLockdownModeUI()
         }
 
     }
@@ -317,20 +374,20 @@ class SettingsFragment : Fragment() {
             refreshDatabase()
         }
 
-        enableLogsSwitch.setOnCheckedChangeListener { compoundButton: CompoundButton, b: Boolean ->
-            PersistentState.setLogsEnabled(requireContext(), b)
+        enableLogsSwitch.setOnCheckedChangeListener { _: CompoundButton, b: Boolean ->
+            persistentState.logsEnabled = b
         }
 
-        autoStartSwitch.setOnCheckedChangeListener { compoundButton: CompoundButton, b: Boolean ->
-            PersistentState.setPrefAutoStartBootup(requireContext(), b)
+        autoStartSwitch.setOnCheckedChangeListener { _: CompoundButton, b: Boolean ->
+            persistentState.prefAutoStartBootUp = b
         }
 
-        killAppSwitch.setOnCheckedChangeListener { compoundButton: CompoundButton, b: Boolean ->
-            PersistentState.setKillAppOnFirewall(requireContext(), b)
+        killAppSwitch.setOnCheckedChangeListener { _: CompoundButton, b: Boolean ->
+            persistentState.killAppOnFirewall = b
         }
 
         allowByPassSwitch.setOnCheckedChangeListener { _: CompoundButton, b: Boolean ->
-            PersistentState.setAllowByPass(requireContext(), b)
+            persistentState.allowByPass = b
             object : CountDownTimer(100, 500) {
                 override fun onTick(millisUntilFinished: Long) {
                     allowByPassSwitch.isEnabled = false
@@ -347,37 +404,17 @@ class SettingsFragment : Fragment() {
 
         }
 
-        /*onDeviceBlockListSwitch.setOnCheckedChangeListener { _: CompoundButton, b: Boolean ->
-            if (b) {
-                onDeviceBlockListProgress.visibility = View.GONE
-                if (!PersistentState.isBlockListFilesDownloaded(requireContext())) {
-                    showDownloadDialog()
-                } else {
-                    if (b) {
-                        setBraveDNSLocal()
-                        val count = PersistentState.getNumberOfLocalBlockLists(requireContext())
-                        onDeviceBlockListDesc.text = "$count blocklists are in-use."
-                    }
-                }
-            } else {
-                removeBraveDNSLocal()
-                refreshOnDeviceBlockListBtn.visibility = View.GONE
-                configureBlockListBtn.visibility = View.GONE
-                onDeviceBlockListProgress.visibility = View.GONE
-                onDeviceBlockListDesc.text = "Choose from 170+ blocklists."
-            }
-        }*/
         onDeviceBlockListSwitch.setOnCheckedChangeListener(null)
         onDeviceBlockListSwitch.setOnClickListener{
             val isSelected = onDeviceBlockListSwitch.isChecked
             if(isSelected){
                 onDeviceBlockListProgress.visibility = View.GONE
-                if (!PersistentState.isBlockListFilesDownloaded(requireContext())) {
+                if (!persistentState.blockListFilesDownloaded) {
                     showDownloadDialog()
                 } else {
                     if (isSelected) {
                         setBraveDNSLocal()
-                        val count = PersistentState.getNumberOfLocalBlockLists(requireContext())
+                        val count = persistentState.numberOfLocalBlocklists
                         onDeviceBlockListDesc.text = "$count blocklists are in-use."
                     }
                 }
@@ -392,45 +429,24 @@ class SettingsFragment : Fragment() {
         }
 
         socks5Switch.setOnCheckedChangeListener { compoundButton: CompoundButton, b: Boolean ->
-            PersistentState.setSocks5Enabled(requireContext(), b)
+            persistentState.socks5Enabled = b
             if (b) {
                 showDialogForSocks5Proxy()
             } else {
                 socks5Switch.visibility = View.GONE
                 socks5Progress.visibility = View.VISIBLE
                 appMode?.setProxyMode(Settings.ProxyModeNone)
-                //PersistentState.setUDPBlockedSettings(requireContext(), false)
+                //persistentState.setUDPBlockedSettings(requireContext(), false)
                 socks5DescText.text = "Forward connections to SOCKS5 endpoint."
                 socks5Switch.visibility = View.VISIBLE
                 socks5Progress.visibility = View.GONE
             }
         }
 
-        /*socks5Switch.setOnClickListener{
-            val state = socks5Switch.isChecked
-            PersistentState.setSocks5Enabled(requireContext(), state)
-            if (state) {
-                showDialogForSocks5Proxy()
-            } else {
-                socks5Switch.visibility = View.GONE
-                socks5Progress.visibility = View.VISIBLE
-                appMode?.setProxyMode(Settings.ProxyModeNone)
-                PersistentState.setUDPBlockedSettings(requireContext(), false)
-                socks5DescText.text = "Forward connections to SOCKS5 endpoint."
-                socks5Switch.visibility = View.VISIBLE
-                socks5Progress.visibility = View.GONE
-            }
-        }*/
 
         httpProxySwitch.setOnCheckedChangeListener { compoundButton: CompoundButton, b: Boolean ->
             showDialogForHTTPProxy(b)
         }
-
-
-        /*blockUnknownConnSwitch.setOnCheckedChangeListener { compoundButton: CompoundButton, b: Boolean ->
-            PersistentState.setBlockUnknownConnections(requireContext(), b)
-        }*/
-
 
         excludeAppImg.setOnClickListener {
             excludeAppImg.isEnabled = false
@@ -450,7 +466,7 @@ class SettingsFragment : Fragment() {
 
         configureBlockListBtn.setOnClickListener {
             val intent = Intent(requireContext(), DNSConfigureWebViewActivity::class.java)
-            val stamp = PersistentState.getLocalBlockListStamp(requireContext())
+            val stamp = persistentState.getLocalBlockListStamp()
             if (DEBUG) Log.d(LOG_TAG, "Stamp value in settings screen - $stamp")
             intent.putExtra("location", DNSConfigureWebViewActivity.LOCAL)
             intent.putExtra("stamp", stamp)
@@ -466,7 +482,7 @@ class SettingsFragment : Fragment() {
     override fun onResume() {
         super.onResume()
         detectLockDownMode()
-        if (PersistentState.isLocalBlockListEnabled(requireContext()) && PersistentState.isBlockListFilesDownloaded(requireContext()) && PersistentState.getLocalBlockListStamp(requireContext()).isNullOrEmpty()) {
+        if (persistentState.localBlocklistEnabled && persistentState.blockListFilesDownloaded && persistentState.getLocalBlockListStamp().isNullOrEmpty()) {
             onDeviceBlockListDesc.text = "Configure blocklists"
             onDeviceBlockListProgress.visibility = View.GONE
         } else if (downloadInProgress == 0) {
@@ -475,15 +491,15 @@ class SettingsFragment : Fragment() {
             onDeviceBlockListProgress.visibility = View.VISIBLE
         } else {
             onDeviceBlockListProgress.visibility = View.GONE
-            val count = PersistentState.getNumberOfLocalBlockLists(requireContext())
+            val count = persistentState.numberOfLocalBlocklists
             if (count != 0) {
                 onDeviceBlockListDesc.text = "$count blocklists in-use."
             }
         }
-        val count = PersistentState.getNumberOfLocalBlockLists(requireContext())
-        if (count != 0 && PersistentState.isLocalBlockListEnabled(requireContext())) {
+        val count = persistentState.numberOfLocalBlocklists
+        if (count != 0 && persistentState.localBlocklistEnabled) {
             onDeviceBlockListDesc.text = "$count blocklists in-use."
-        } else if (PersistentState.isLocalBlockListEnabled(requireContext())) {
+        } else if (persistentState.localBlocklistEnabled) {
             onDeviceBlockListDesc.text = "No list configured."
         }
         if(!onDeviceBlockListSwitch.isChecked && downloadInProgress != 0){
@@ -493,9 +509,9 @@ class SettingsFragment : Fragment() {
 
     private fun checkForDownload(isUserInitiated : Boolean): Boolean {
         if (timeStamp == 0L) {
-            timeStamp = PersistentState.getLocalBlockListDownloadTime(requireContext())
+            timeStamp = persistentState.localBlockListDownloadTime
         }
-        val appVersionCode = PersistentState.getAppVersion(requireContext())
+        val appVersionCode = persistentState.appVersion
         val url = "$REFRESH_BLOCKLIST_URL$timeStamp&${Constants.APPEND_VCODE}$appVersionCode"
         if(DEBUG) Log.d(LOG_TAG,"Check for local download, url - $url")
         run(url, isUserInitiated)
@@ -510,7 +526,7 @@ class SettingsFragment : Fragment() {
 
         client.newCall(request).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
-                Log.d(LOG_TAG, "onFailure -  ${call.isCanceled}, ${call.isExecuted}")
+                Log.d(LOG_TAG, "onFailure -  ${call.isCanceled()}, ${call.isExecuted()}")
                 activity?.runOnUiThread {
                     configureBlockListBtn.visibility = View.GONE
                     onDeviceLastUpdatedTime.visibility = View.GONE
@@ -525,7 +541,7 @@ class SettingsFragment : Fragment() {
 
             override fun onResponse(call: Call, response: Response) {
                 try {
-                    val stringResponse = response.body()!!.string()
+                    val stringResponse = response.body!!.string()
                     //creating json object
                     val jsonObject = JSONObject(stringResponse)
                     val version = jsonObject.getInt("version")
@@ -535,7 +551,7 @@ class SettingsFragment : Fragment() {
                         timeStamp = jsonObject.getLong("latest")
                         if (DEBUG) Log.d(LOG_TAG, "onResponse -  $updateValue")
                         if (updateValue) {
-                            PersistentState.setLocalBlockListDownloadTime(activity as Context, timeStamp)
+                            persistentState.localBlockListDownloadTime = timeStamp
                             activity?.runOnUiThread {
                                 registerReceiverForDownloadManager()
                                 handleDownloadFiles()
@@ -554,14 +570,14 @@ class SettingsFragment : Fragment() {
                                     onDeviceBlockListDesc.text = "Error downloading file. Try again."
                                     downloadInProgress = -1
                                     timeStamp = 0
-                                    PersistentState.setLocalBlockListDownloadTime(activity as Context, 0L)
+                                    persistentState.localBlockListDownloadTime = 0
                                     Utilities.showToastInMidLayout(activity as Context, "Error downloading file. Try again later.", Toast.LENGTH_SHORT)
                                 }
                             }
                         }
                     }
-                    response.body()!!.close()
-                    client.connectionPool().evictAll()
+                    response.body!!.close()
+                    client.connectionPool.evictAll()
                 } catch (e: java.lang.Exception) {
                     Log.w(LOG_TAG,"Exception while downloading: ${e.message}",e)
                     configureBlockListBtn.visibility = View.GONE
@@ -572,7 +588,7 @@ class SettingsFragment : Fragment() {
                     onDeviceBlockListSwitch.isChecked = false
                     downloadInProgress = -1
                     timeStamp = 0
-                    PersistentState.setLocalBlockListDownloadTime(activity as Context, 0L)
+                    persistentState.localBlockListDownloadTime = 0
                     onDeviceBlockListDesc.text = "Error downloading file. Try again."
                 }
             }
@@ -606,8 +622,8 @@ class SettingsFragment : Fragment() {
             val errorTxt: TextView = dialog.findViewById(R.id.dialog_http_proxy_failure_text) as TextView
 
 
-            val hostName = PersistentState.getHttpProxyHostAddress(requireContext())
-            val portAddr = PersistentState.getHttpProxyPort(requireContext())
+            val hostName = persistentState.httpProxyHostAddress
+            val portAddr = persistentState.httpProxyPort
             if (!hostName.isNullOrEmpty()) {
                 hostAddressEditText.setText(hostName, TextView.BufferType.EDITABLE)
             }
@@ -653,9 +669,9 @@ class SettingsFragment : Fragment() {
                     httpProxyProgressBar.visibility = View.VISIBLE
                     httpProxySwitch.visibility = View.GONE
                     errorTxt.visibility = View.INVISIBLE
-                    PersistentState.setHttpProxyHostAddress(requireContext(), host)
-                    PersistentState.setHttpProxyPort(requireContext(), port)
-                    PersistentState.setHttpProxyEnabled(requireContext(), true)
+                    persistentState.httpProxyHostAddress = host
+                    persistentState.httpProxyPort = port
+                    persistentState.httpProxyEnabled = true
                     dialog.dismiss()
                     Toast.makeText(requireContext(), "HTTP proxy is set", Toast.LENGTH_SHORT).show()
                     if (httpProxySwitch.isChecked) {
@@ -669,13 +685,13 @@ class SettingsFragment : Fragment() {
             cancelURLBtn.setOnClickListener {
                 dialog.dismiss()
                 if (DEBUG) Log.d(LOG_TAG, "HTTP IsSelected is false")
-                PersistentState.setHttpProxyEnabled(requireContext(), false)
-                httpProxyDescText.text = "This proxy is only a recommendation and it is possible that some apps will ignore it."
+                persistentState.httpProxyEnabled = false
+                httpProxyDescText.text = "This proxy is only a recomendation and it is possible that some apps will ignore it."
                 httpProxySwitch.isChecked = false
             }
         } else {
             if (DEBUG) Log.d(LOG_TAG, "HTTP IsSelected is false")
-            PersistentState.setHttpProxyEnabled(requireContext(), false)
+            persistentState.httpProxyEnabled = false
             httpProxySwitch.isChecked = false
             httpProxyDescText.text = "This proxy is only a recommendation and it is possible that some apps will ignore it."
         }
@@ -692,31 +708,25 @@ class SettingsFragment : Fragment() {
     }
 
     private fun setBraveDNSLocal() {
-        //PersistentState.setLocalBlockListStamp(requireContext(), stamp)
         configureBlockListBtn.visibility = View.VISIBLE
         refreshOnDeviceBlockListBtn.visibility = View.VISIBLE
         onDeviceLastUpdatedTime.visibility = View.VISIBLE
-        onDeviceLastUpdatedTime.text = Utilities.convertLongToRelativeTime(timeStamp)
+        onDeviceLastUpdatedTime.text = "Version: v${Utilities.convertLongToDate(timeStamp)}"
         val path: String = requireContext().filesDir.canonicalPath
         if (appMode?.getBraveDNS() == null) {
             GlobalScope.launch(Dispatchers.IO) {
                 if (DEBUG) Log.d(LOG_TAG, "Local brave dns set call from settings fragment")
                 val braveDNS = Dnsx.newBraveDNSLocal(path + Constants.FILE_TD_FILE, path + Constants.FILE_RD_FILE, path + Constants.FILE_BASIC_CONFIG, path + Constants.FILE_TAG_NAME)
                 appMode?.setBraveDNSMode(braveDNS)
-                PersistentState.setLocalBlockListEnabled(requireContext(), true)
+                persistentState.localBlocklistEnabled = true
             }
         }
     }
 
     private fun removeBraveDNSLocal() {
         appMode?.setBraveDNSMode(null)
-        PersistentState.setLocalBlockListEnabled(requireContext(), false)
+        persistentState.localBlocklistEnabled = false
     }
-
-  /*  fun downloadLocalBlocklistFiles(){
-        registerReceiverForDownloadManager()
-        handleDownloadFiles()
-    }*/
 
 
     private fun showDownloadDialog() {
@@ -774,7 +784,7 @@ class SettingsFragment : Fragment() {
     private fun handleDownloadFiles() {
         downloadManager = requireContext().getSystemService(AppCompatActivity.DOWNLOAD_SERVICE) as DownloadManager
         if(timeStamp == 0L) {
-            timeStamp = PersistentState.getLocalBlockListDownloadTime(requireContext())
+            timeStamp = persistentState.localBlockListDownloadTime
         }
         val url = Constants.JSON_DOWNLOAD_BLOCKLIST_LINK + "/" + timeStamp
         downloadBlockListFiles(url, Constants.FILE_TAG_NAME, requireContext())
@@ -810,7 +820,6 @@ class SettingsFragment : Fragment() {
                     query.setFilterById(enqueue)
                     val c: Cursor = downloadManager.query(query)
                     if (c.moveToFirst()) {
-                        //val columnIndex: Int = c.getColumnIndex(DownloadManager.COLUMN_STATUS)
                         val status = checkStatus(c)
                         if (DEBUG) Log.d(LOG_TAG, "Download status: $status,$filesDownloaded, $downloadId")
                         if (status == "STATUS_SUCCESSFUL") {
@@ -820,7 +829,7 @@ class SettingsFragment : Fragment() {
                                 val to = File(ctxt.filesDir.canonicalPath + Constants.FILE_TAG_NAME)
                                 from.copyTo(to, true)
                                 if(timeStamp == 0L) {
-                                    timeStamp = PersistentState.getLocalBlockListDownloadTime(ctxt)
+                                    timeStamp = persistentState.localBlockListDownloadTime
                                 }
                                 val url = Constants.JSON_DOWNLOAD_BASIC_CONFIG_LINK + "/" + timeStamp
                                 if(DEBUG) Log.d(LOG_TAG,"Check for local download, url - $url")
@@ -830,7 +839,7 @@ class SettingsFragment : Fragment() {
                                 val to = File(ctxt.filesDir.canonicalPath + Constants.FILE_BASIC_CONFIG)
                                 from.copyTo(to, true)
                                 if (timeStamp == 0L) {
-                                    timeStamp = PersistentState.getLocalBlockListDownloadTime(ctxt)
+                                    timeStamp = persistentState.localBlockListDownloadTime
                                 }
                                 val url = Constants.JSON_DOWNLOAD_BASIC_RANK_LINK + "/" + timeStamp
                                 if(DEBUG) Log.d(LOG_TAG,"Check for local download, url - $url")
@@ -840,7 +849,7 @@ class SettingsFragment : Fragment() {
                                 val to = File(ctxt.filesDir.canonicalPath + Constants.FILE_RD_FILE)
                                 from.copyTo(to, true)
                                 if (timeStamp == 0L) {
-                                    timeStamp = PersistentState.getLocalBlockListDownloadTime(ctxt)
+                                    timeStamp = persistentState.localBlockListDownloadTime
                                 }
                                 val url = Constants.JSON_DOWNLOAD_BASIC_TRIE_LINK + "/" + timeStamp
                                 if(DEBUG) Log.d(LOG_TAG,"Check for local download, url - $url")
@@ -848,10 +857,13 @@ class SettingsFragment : Fragment() {
                             } else if (filesDownloaded == 4) {
                                 val from = File(ctxt.getExternalFilesDir(null).toString() + Constants.DOWNLOAD_PATH + Constants.FILE_TD_FILE)
                                 val to = File(ctxt.filesDir.canonicalPath + Constants.FILE_TD_FILE)
-                                from.copyTo(to, true)
-                                PersistentState.setBlockListFilesDownloaded(ctxt, true)
-                                PersistentState.setLocalBlockListEnabled(ctxt, true)
-                                //PersistentState.setLocalBlockListDownloadTime(ctxt, System.currentTimeMillis())
+                                val downloadedFile = from.copyTo(to, true)
+                                if(downloadedFile.exists()) {
+                                    Utilities.deleteOldFiles(ctxt)
+                                }
+                                persistentState.blockListFilesDownloaded = true
+                                persistentState.localBlocklistEnabled = true
+                                //persistentState.setLocalBlockListDownloadTime(ctxt, System.currentTimeMillis())
                                 localDownloadComplete.postValue(1)
                                 downloadInProgress = 1
                                 configureBlockListBtn.visibility = View.VISIBLE
@@ -859,7 +871,7 @@ class SettingsFragment : Fragment() {
                                 onDeviceBlockListProgress.visibility = View.GONE
                                 onDeviceBlockListSwitch.visibility = View.VISIBLE
                                 onDeviceLastUpdatedTime.visibility = View.VISIBLE
-                                onDeviceLastUpdatedTime.text = Utilities.convertLongToRelativeTime(timeStamp)
+                                onDeviceLastUpdatedTime.text = "Version: v${Utilities.convertLongToDate(timeStamp)}"
                                 onDeviceBlockListDesc.text = "Download completed, Configure blocklist"
                                 if (DEBUG) Log.d(LOG_TAG, "Download status : Download completed: $status")
                                 Toast.makeText(ctxt, "Blocklists downloaded successfully.", Toast.LENGTH_LONG).show()
@@ -870,11 +882,9 @@ class SettingsFragment : Fragment() {
                                 refreshOnDeviceBlockListBtn.visibility = View.VISIBLE
                                 onDeviceBlockListProgress.visibility = View.GONE
                                 onDeviceBlockListSwitch.visibility = View.VISIBLE
-                                onDeviceLastUpdatedTime.text = Utilities.convertLongToRelativeTime(timeStamp)
+                                onDeviceLastUpdatedTime.text = "Version: v${Utilities.convertLongToDate(timeStamp)}"
                             }
                         } else {
-                            //onDeviceBlockListDesc.text = "Error downloading file. Try again."
-                            //filesDownloaded = 0
                             if (DEBUG) Log.d(LOG_TAG, "Download failed: $enqueue, $action, $downloadId")
                             configureBlockListBtn.visibility = View.GONE
                             onDeviceLastUpdatedTime.visibility = View.GONE
@@ -886,9 +896,9 @@ class SettingsFragment : Fragment() {
                             downloadInProgress = -1
                             timeStamp = 0
                             downloadManager.remove(downloadId)
-                            PersistentState.setLocalBlockListDownloadTime(ctxt, 0L)
-                            PersistentState.setBlockListFilesDownloaded(ctxt, false)
-                            PersistentState.setLocalBlockListEnabled(ctxt, false)
+                            persistentState.localBlockListDownloadTime = 0L
+                            persistentState.blockListFilesDownloaded = false
+                            persistentState.localBlocklistEnabled = false
                         }
                     } else {
                         if (DEBUG) Log.d(LOG_TAG, "Download failed: $enqueue, $action")
@@ -902,9 +912,9 @@ class SettingsFragment : Fragment() {
                         downloadInProgress= -1
                         filesDownloaded = 0
                         timeStamp = 0
-                        PersistentState.setLocalBlockListDownloadTime(ctxt, 0L)
-                        PersistentState.setBlockListFilesDownloaded(ctxt, false)
-                        PersistentState.setLocalBlockListEnabled(ctxt, false)
+                        persistentState.localBlockListDownloadTime = 0L
+                        persistentState.blockListFilesDownloaded = false
+                        persistentState.localBlocklistEnabled = false
                     }
                     c.close()
                 }
@@ -920,9 +930,9 @@ class SettingsFragment : Fragment() {
                 downloadInProgress = -1
                 timeStamp = 0
                 filesDownloaded = 0
-                PersistentState.setLocalBlockListDownloadTime(ctxt, 0L)
-                PersistentState.setBlockListFilesDownloaded(ctxt, false)
-                PersistentState.setLocalBlockListEnabled(ctxt, false)
+                persistentState.localBlockListDownloadTime = 0L
+                persistentState.blockListFilesDownloaded = false
+                persistentState.localBlocklistEnabled = false
             }
         }
     }
@@ -934,7 +944,7 @@ class SettingsFragment : Fragment() {
 
 
     private fun showExcludeAppDialog(context: Context, recyclerAdapter: ExcludedAppListAdapter, excludeAppViewModel: ExcludedAppViewModel) {
-        val excludeAppDialog = ExcludeAppDialog(context, recyclerAdapter, excludeAppViewModel)
+        val excludeAppDialog = ExcludeAppDialog(context, get(), get(), persistentState, recyclerAdapter, excludeAppViewModel)
         //if we know that the particular variable not null any time ,we can assign !! (not null operator ),
         // then  it won't check for null, if it becomes null, it will throw exception
         excludeAppDialog.show()
@@ -968,11 +978,9 @@ class SettingsFragment : Fragment() {
         val passwordEditText: EditText = dialog.findViewById(R.id.dialog_proxy_edit_password)
         val udpBlockCheckBox: CheckBox = dialog.findViewById(R.id.dialog_proxy_udp_check)
 
-        val mDb = AppDatabase.invoke(requireContext().applicationContext)
-        val proxyEndpointRepository = mDb.proxyEndpointRepository()
         val sock5Proxy = proxyEndpointRepository.getConnectedProxy()
 
-        udpBlockCheckBox.isChecked = PersistentState.getUDPBlockedSettings(requireContext())
+        udpBlockCheckBox.isChecked = persistentState.udpBlockedSettings
 
         val appNames: MutableList<String> = ArrayList()
         appNames.add("Nobody")
@@ -987,7 +995,7 @@ class SettingsFragment : Fragment() {
             userNameEditText.setText(sock5Proxy.userName.toString(), TextView.BufferType.EDITABLE)
             if (sock5Proxy.proxyAppName?.isNotEmpty()!! && sock5Proxy.proxyAppName != "Nobody") {
                 val packageName = sock5Proxy.proxyAppName
-                val app = HomeScreenActivity.GlobalVariable.appList[packageName]
+                val app = appList[packageName]
                 var position = 0
                 for ((i, item) in appNames.withIndex()) {
                     if (item == app?.appName) {
@@ -1017,15 +1025,10 @@ class SettingsFragment : Fragment() {
             if (appName.isEmpty() || appName == "Nobody") {
                 appPackageName = appNames[0]
             } else {
-                appPackageName = mDb.appInfoRepository().getPackageNameForAppName(appName)
+                appPackageName = appInfoRepository.getPackageNameForAppName(appName)
             }
             ip = ipAddressEditText.text.toString()
-            /*if(Patterns.IP_ADDRESS.matcher(ip).matches()) {
-                isIPValid = true
-            }else{
-                errorTxt.setText("Invalid IP address")
-                isIPValid = false
-            }*/
+
             if (ip.isEmpty() || ip.isBlank()) {
                 isIPValid = false
                 errorTxt.text = "Hostname is empty"
@@ -1050,7 +1053,7 @@ class SettingsFragment : Fragment() {
                 errorTxt.setText("Invalid port")
                 isValid = false
             }
-            Log.d(LOG_TAG, "Pattern not matching - port- $port , ${portEditText.text.toString()}")
+            Log.d(LOG_TAG, "Pattern not matching - port- $port , ${portEditText.text}")
             if (udpBlockCheckBox.isChecked) {
                 isUDPBlock = true
             }
@@ -1059,7 +1062,7 @@ class SettingsFragment : Fragment() {
             password = passwordEditText.text.toString()
             if (isValid && isIPValid) {
                 //Do the Socks5 Proxy setting there
-                PersistentState.setUDPBlockedSettings(requireContext(), udpBlockCheckBox.isChecked)
+                persistentState.udpBlockedSettings = udpBlockCheckBox.isChecked
                 insertProxyEndpointDB(mode, "Socks5", appPackageName, ip, port, userName, password, isUDPBlock)
                 socks5DescText.text = "Forwarding to ${ip}:${port}, $appName"
                 dialog.dismiss()
@@ -1076,14 +1079,10 @@ class SettingsFragment : Fragment() {
     }
 
     private fun getAppName(): MutableList<String> {
-        val mDb = AppDatabase.invoke(requireContext().applicationContext)
-        val appInfoRepository = mDb.appInfoRepository()
         return appInfoRepository.getAppNameList()
     }
 
     private fun insertProxyEndpointDB(mode: String, name: String, appName: String, ip: String, port: Int, userName: String, password: String, isUDPBlock: Boolean) {
-        val mDb = AppDatabase.invoke(requireContext().applicationContext)
-        val proxyEndpointRepository = mDb.proxyEndpointRepository()
         var proxyName = name
         if (proxyName.isEmpty() || proxyName.isBlank()) {
             if (mode == "Internal") {

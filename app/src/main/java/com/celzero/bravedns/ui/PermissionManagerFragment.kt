@@ -32,10 +32,12 @@ import com.celzero.bravedns.R
 import com.celzero.bravedns.adapter.Apk
 import com.celzero.bravedns.adapter.ApkListAdapter
 import com.celzero.bravedns.database.AppDatabase
+import com.celzero.bravedns.database.AppInfoRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.koin.android.ext.android.inject
 
 class PermissionManagerFragment : Fragment(), SearchView.OnQueryTextListener{
     private val apkList = ArrayList<Apk>()
@@ -50,13 +52,15 @@ class PermissionManagerFragment : Fragment(), SearchView.OnQueryTextListener{
 
     private lateinit var filterIcon : ImageView
 
+    private val appInfoRepository by inject<AppInfoRepository>()
+
 
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View? {
-        val view: View = inflater!!.inflate(R.layout.fragment_permission_manager,container,false)
+        val view: View = inflater.inflate(R.layout.fragment_permission_manager,container,false)
 
         val includeView = view.findViewById<View>(R.id.app_scrolling_incl)
         expandableImage = view.findViewById(R.id.expandedImage)
@@ -78,23 +82,24 @@ class PermissionManagerFragment : Fragment(), SearchView.OnQueryTextListener{
 
         updateAppList()
 
-        expandableImage.setOnClickListener(View.OnClickListener {
-            Toast.makeText(this.context,"Load",Toast.LENGTH_SHORT).show()
+        expandableImage.setOnClickListener {
+            Toast.makeText(this.context, "Load", Toast.LENGTH_SHORT).show()
             mAdapter.notifyDataSetChanged()
-        })
+        }
 
-        filterIcon.setOnClickListener(View.OnClickListener {
+        filterIcon.setOnClickListener {
             val bottomFilterSheetFragment = FilterAndSortBottomFragment()
             val frag = context as FragmentActivity
-            bottomFilterSheetFragment.show(frag.supportFragmentManager, bottomFilterSheetFragment.tag)
-        })
+            bottomFilterSheetFragment.show(
+                frag.supportFragmentManager,
+                bottomFilterSheetFragment.tag
+            )
+        }
 
         return view
     }
 
     private fun updateAppList() = GlobalScope.launch ( Dispatchers.Default ){
-            val mDb = AppDatabase.invoke(contextVal.applicationContext)
-            val appInfoRepository = mDb.appInfoRepository()
             val appList = appInfoRepository.getAppInfoAsync()
             //Log.w("DB","App list from DB Size: "+appList.size)
             appList.forEach{

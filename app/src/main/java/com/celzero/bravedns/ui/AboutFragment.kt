@@ -27,7 +27,6 @@ import android.widget.TextView
 import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
 import com.celzero.bravedns.R
-import com.celzero.bravedns.ui.HomeScreenActivity.GlobalVariable.isUserInitiatedUpdateCheck
 
 
 class AboutFragment : Fragment(), View.OnClickListener {
@@ -98,7 +97,7 @@ class AboutFragment : Fragment(), View.OnClickListener {
                 startActivity(intent)
             }
             view == blogTxt -> {
-                val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://brave.imprint.to/"))
+                val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://blog.rethinkdns.com/"))
                 startActivity(intent)
             }
             view == faqTxt -> {
@@ -123,12 +122,11 @@ class AboutFragment : Fragment(), View.OnClickListener {
                 startActivity(intent)
             }
             view == mozillaImg -> {
-                val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://www.mozilla.org/builders/"))
+                val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://builders.mozilla.community/alumni.html"))
                 startActivity(intent)
             }
             view == appUpdateTxt ->{
-                isUserInitiatedUpdateCheck = true
-                (requireContext() as HomeScreenActivity).checkForAppUpdate()
+                (requireContext() as HomeScreenActivity).checkForAppUpdate(true)
             }
             view == whatsNewTxt ->{
                 showNewFeaturesDialog()
@@ -136,12 +134,12 @@ class AboutFragment : Fragment(), View.OnClickListener {
         }
     }
 
-    fun showNewFeaturesDialog() {
+    private fun showNewFeaturesDialog() {
         val inflater: LayoutInflater = LayoutInflater.from(requireContext())
         val view: View = inflater.inflate(R.layout.dialog_whatsnew, null)
         //val builder: android.app.AlertDialog.Builder = AlertDialog.Builder(this)
         val builder = AlertDialog.Builder(requireContext())
-        builder.setView(view).setTitle("20+ new features in v052")
+        builder.setView(view).setTitle(getString(R.string.whats_dialog_title))
 
         builder.setPositiveButton("Let\'s Go") { dialogInterface, which ->
             dialogInterface.dismiss()

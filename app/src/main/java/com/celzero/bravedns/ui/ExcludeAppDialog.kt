@@ -29,11 +29,11 @@ import android.widget.ImageView
 import android.widget.TextView
 import androidx.appcompat.widget.AppCompatCheckBox
 import androidx.appcompat.widget.SearchView
-import androidx.lifecycle.Observer
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.celzero.bravedns.R
-import com.celzero.bravedns.database.AppDatabase
+import com.celzero.bravedns.database.AppInfoRepository
+import com.celzero.bravedns.database.CategoryInfoRepository
 import com.celzero.bravedns.service.PersistentState
 import com.celzero.bravedns.ui.HomeScreenActivity.GlobalVariable.DEBUG
 import com.celzero.bravedns.util.Constants.Companion.LOG_TAG
@@ -43,7 +43,12 @@ import com.google.android.material.chip.ChipGroup
 import java.util.stream.Collectors
 
 
-class ExcludeAppDialog(var activity: Context, internal var adapter: RecyclerView.Adapter<*>, var viewModel: ExcludedAppViewModel) : Dialog(activity),
+class ExcludeAppDialog(private var activity: Context,
+                       private val appInfoRepository: AppInfoRepository,
+                       private val categoryInfoRepository: CategoryInfoRepository,
+                       private val persistentState:PersistentState,
+                       internal var adapter: RecyclerView.Adapter<*>,
+                       var viewModel: ExcludedAppViewModel) : Dialog(activity),
     View.OnClickListener, SearchView.OnQueryTextListener {
     var dialog: Dialog? = null
 
@@ -70,7 +75,7 @@ class ExcludeAppDialog(var activity: Context, internal var adapter: RecyclerView
         window?.setLayout(
             WindowManager.LayoutParams.MATCH_PARENT,
             WindowManager.LayoutParams.MATCH_PARENT
-        );
+        )
 
         recyclerView = findViewById(R.id.exclude_app_recycler_view_dialog)
         mLayoutManager = LinearLayoutManager(activity)
@@ -90,16 +95,14 @@ class ExcludeAppDialog(var activity: Context, internal var adapter: RecyclerView
         searchView.setOnQueryTextListener(this)
         searchView.setOnSearchClickListener(this)
 
-        searchView.setOnCloseListener(SearchView.OnCloseListener {
+        searchView.setOnCloseListener {
             showCategoryChips()
             false
-        })
+        }
 
-        val mDb = AppDatabase.invoke(context.applicationContext)
-        val appInfoRepository = mDb.appInfoRepository()
         val appCount = HomeScreenActivity.GlobalVariable.appList.size
         val act: HomeScreenActivity = activity as HomeScreenActivity
-        appInfoRepository.getExcludedAppListCountLiveData().observe(act, Observer {
+        appInfoRepository.getExcludedAppListCountLiveData().observe(act, {
             countSelectedText.text = "$it/$appCount apps excluded"
         })
 
@@ -120,9 +123,6 @@ class ExcludeAppDialog(var activity: Context, internal var adapter: RecyclerView
     }
 
     private fun modifyAppsInExcludedAppList(checked: Boolean) {
-        val mDb = AppDatabase.invoke(context.applicationContext)
-        val appInfoRepository = mDb.appInfoRepository()
-        val categoryInfoRepository = mDb.categoryInfoRepository()
         if(filterCategories.isNullOrEmpty()){
             appInfoRepository.updateExcludedForAllApp(checked)
             categoryInfoRepository.updateExcludedCountForAllApp(checked)
@@ -142,8 +142,6 @@ class ExcludeAppDialog(var activity: Context, internal var adapter: RecyclerView
 
 
     private fun categoryListByAppNameFromDB(name : String){
-        val mDb = AppDatabase.invoke(context.applicationContext)
-        val appInfoRepository = mDb.appInfoRepository()
         category = appInfoRepository.getAppCategoryForAppName("%$name%")
         if(DEBUG) Log.d(LOG_TAG,"Category - ${category.size}")
         setCategoryChips(category)
@@ -172,10 +170,8 @@ class ExcludeAppDialog(var activity: Context, internal var adapter: RecyclerView
     }
 
     private fun applyChanges() {
-        val mDb = AppDatabase.invoke(context.applicationContext)
-        val appInfoRepository = mDb.appInfoRepository()
         val excludedApps = appInfoRepository.getExcludedAppList()
-        PersistentState.setExcludedAppsFromVPN(excludedApps.toMutableSet(), context)
+        persistentState.excludedAppsFromVPN = excludedApps.toMutableSet()
         //Toast.makeText(activity,"Update Successful",Toast.LENGTH_SHORT).show()
     }
 
@@ -222,7 +218,7 @@ class ExcludeAppDialog(var activity: Context, internal var adapter: RecyclerView
                     } else {
                         var catTitle = ""
                         filterCategories.forEach {
-                            catTitle = it + "," + catTitle
+                            catTitle = "$it,$catTitle"
                         }
                         if (catTitle.length > 1) {
                             catTitle.substring(0, catTitle.length - 1)

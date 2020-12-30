@@ -33,13 +33,26 @@
                 android:gravity="center"
                 android:orientation="vertical">
 
-                <androidx.appcompat.widget.AppCompatImageView
-                    android:id="@+id/settings_app_icon"
-                    android:layout_width="wrap_content"
-                    android:layout_height="match_parent"
-                    android:layout_gravity="center"
-                    android:padding="5dp"
-                    android:src="@drawable/conf_dns_icon_black" />
+                <com.facebook.shimmer.ShimmerFrameLayout
+                    android:id="@+id/shimmer_view_heading"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    app:shimmer_auto_start="true"
+                    app:shimmer_base_color="@color/primaryText"
+                    app:shimmer_colored="true"
+                    app:shimmer_direction="top_to_bottom"
+                    app:shimmer_duration="12000"
+                    app:shimmer_shape="linear"
+                    app:shimmer_width_ratio="1.5">
+
+                    <androidx.appcompat.widget.AppCompatImageView
+                        android:id="@+id/settings_app_icon"
+                        android:layout_width="wrap_content"
+                        android:layout_height="match_parent"
+                        android:layout_gravity="center"
+                        android:padding="5dp"
+                        android:src="@drawable/conf_dns_icon_black" />
+                </com.facebook.shimmer.ShimmerFrameLayout>
 
             </LinearLayout>
 
@@ -70,7 +83,7 @@
             android:fontFamily="sans-serif-smallcaps"
             android:padding="10dp"
             android:textSize="@dimen/large_font_text_view"
-            android:text="Firewall"
+            android:text="@string/settings_firewall_header"
             android:textColor="@color/secondaryText" />
 
         <RelativeLayout
@@ -96,14 +109,14 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:textSize="@dimen/large_font_text_view"
-                    android:text="Kill app when firewalled (experimental)" />
+                    android:text="@string/settings_kill_app_heading" />
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:paddingTop="5dp"
                     android:textSize="@dimen/default_font_text_view"
-                    android:text="Some stubborn apps persistently try to connect to the internet even when firewalled. Enable this setting to kill such apps." />
+                    android:text="@string/settings_kill_app_desc" />
             </LinearLayout>
 
             <com.google.android.material.switchmaterial.SwitchMaterial
@@ -123,7 +136,7 @@
             android:layout_height="wrap_content"
             android:fontFamily="sans-serif-smallcaps"
             android:padding="10dp"
-            android:text="DNS"
+            android:text="@string/settings_dns_header"
             android:textSize="@dimen/large_font_text_view"
             android:textColor="@color/secondaryText" />
 
@@ -149,7 +162,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:textSize="@dimen/large_font_text_view"
-                    android:text="Enable on-device blocklists" />
+                    android:text="@string/settings_local_blocklist_heading" />
 
                 <TextView
                     android:id="@+id/settings_activity_on_device_block_desc"
@@ -157,7 +170,7 @@
                     android:layout_height="wrap_content"
                     android:paddingTop="5dp"
                     android:textSize="@dimen/default_font_text_view"
-                    android:text="Choose from 170+ blocklists." />
+                    android:text="@string/settings_local_blocklist_desc_1" />
             </LinearLayout>
 
             <com.google.android.material.switchmaterial.SwitchMaterial
@@ -185,7 +198,7 @@
                 android:layout_marginTop="3dp"
                 android:layout_marginEnd="3dp"
                 android:padding="13dp"
-                android:text="configure"
+                android:text="@string/settings_local_blocklist_configure"
                 android:textSize="@dimen/default_font_text_view"
                 android:textColor="@color/accent_good"
                 android:visibility="visible" />
@@ -199,7 +212,7 @@
                 android:layout_marginEnd="10dp"
                 android:layout_toStartOf="@id/settings_activity_on_device_block_configure_btn"
                 android:padding="10dp"
-                android:text="Update"
+                android:text="@string/settings_local_blocklist_update"
                 android:textSize="@dimen/default_font_text_view"
                 android:textColor="@color/primaryText"
                 android:visibility="visible" />
@@ -214,19 +227,35 @@
                     android:gravity="center"
                     android:layout_below="@id/settings_activity_on_device_block_switch"
                     android:textSize="@dimen/default_font_text_view"
-                    android:text="last check for update: 10 mins ago"/>
+                    android:text="@string/settings_local_blocklist_check_time"/>
         </RelativeLayout>
 
         <TextView
+            android:id="@+id/settings_activity_vpn_heading_text"
             style="@style/TextAppearance.AppCompat.Subhead"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:fontFamily="sans-serif-smallcaps"
             android:padding="10dp"
             android:textSize="@dimen/large_font_text_view"
-            android:text="VPN"
+            android:text="@string/settings_vpn_header"
             android:textColor="@color/secondaryText" />
 
+        <TextView
+            android:id="@+id/settings_activity_vpn_lockdown_desc"
+            style="@style/TextAppearance.AppCompat.Subhead"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:drawablePadding="10dp"
+            android:paddingTop="10dp"
+            android:paddingBottom="10dp"
+            android:paddingStart="10dp"
+            android:paddingEnd="10dp"
+            android:visibility="gone"
+            android:background="@color/colorPrimary"
+            android:text="@string/settings_lock_down_mode_desc"
+            android:textSize="@dimen/default_font_text_view"
+            app:drawableStartCompat="@drawable/dis_allowed" />
 
         <RelativeLayout
             android:id="@+id/settings_activity_exclude_apps_rl"
@@ -237,6 +266,8 @@
             android:paddingTop="15dp"
             android:paddingEnd="10dp"
             android:paddingBottom="15dp">
+
+
 
             <LinearLayout
                 android:layout_width="wrap_content"
@@ -251,7 +282,7 @@
                     android:layout_width="wrap_content"
                     android:textSize="@dimen/large_font_text_view"
                     android:layout_height="wrap_content"
-                    android:text="Exclude apps from Firewall and DNS" />
+                    android:text="@string/settings_exclude_app_heading" />
 
                 <TextView
                     android:id="@+id/settings_activity_exclude_apps_count_text"
@@ -269,7 +300,7 @@
                     android:layout_height="wrap_content"
                     android:paddingTop="2dp"
                     android:textSize="@dimen/default_font_text_view"
-                    android:text="Connections from excluded apps will not monitored or blocked." />
+                    android:text="@string/settings_exclude_app_desc" />
             </LinearLayout>
 
             <androidx.appcompat.widget.AppCompatImageView
@@ -305,7 +336,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:textSize="@dimen/large_font_text_view"
-                    android:text="Allow Bypass" />
+                    android:text="@string/settings_allow_bypass_heading" />
 
                 <TextView
                     android:id="@+id/settings_activity_allow_bypass_desc"
@@ -313,7 +344,7 @@
                     android:layout_height="wrap_content"
                     android:paddingTop="5dp"
                     android:textSize="@dimen/default_font_text_view"
-                    android:text="Allow requesting apps to bypass RethinkDNS firewall on-demand. Some audio/video conference apps like Zoom and WhatsApp may require an on-demand bypass to function properly." />
+                    android:text="@string/settings_allow_bypass_desc" />
             </LinearLayout>
 
             <com.google.android.material.switchmaterial.SwitchMaterial
@@ -336,53 +367,13 @@
                 android:padding="10dp" />
         </RelativeLayout>
 
-        <RelativeLayout
-            android:id="@+id/settings_activity_always_on_vpn_rl"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="10dp"
-            android:background="@color/colorPrimary"
-            android:padding="10dp"
-            android:visibility="gone">
-
-            <LinearLayout
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_alignParentStart="true"
-                android:layout_centerVertical="true"
-                android:layout_toStartOf="@id/settings_activity_always_on_vpn_switch"
-                android:orientation="vertical">
-
-                <TextView
-                    style="@style/TextAppearance.AppCompat.Subhead"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:textSize="@dimen/large_font_text_view"
-                    android:text="Always On VPN" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:textSize="@dimen/default_font_text_view"
-                    android:text="Blocks the private settings screen" />
-            </LinearLayout>
-
-            <com.google.android.material.switchmaterial.SwitchMaterial
-                android:id="@+id/settings_activity_always_on_vpn_switch"
-                style="@style/CustomWidget.MaterialComponents.CompoundButton.Switch"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_alignParentEnd="true"
-                android:padding="10dp" />
-        </RelativeLayout>
-
         <TextView
             style="@style/TextAppearance.AppCompat.Subhead"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:fontFamily="sans-serif-smallcaps"
             android:padding="10dp"
-            android:text="Proxy (experimental)"
+            android:text="@string/settings_proxy_header"
             android:textSize="@dimen/large_font_text_view"
             android:textColor="@color/secondaryText" />
 
@@ -409,7 +400,7 @@
                     android:layout_width="wrap_content"
                     android:textSize="@dimen/large_font_text_view"
                     android:layout_height="wrap_content"
-                    android:text="Enable SOCKS5 (TCP) Proxy" />
+                    android:text="@string/settings_socks5_heading" />
 
                 <TextView
                     android:id="@+id/settings_activity_socks5_desc"
@@ -417,7 +408,7 @@
                     android:layout_height="wrap_content"
                     android:paddingTop="5dp"
                     android:textSize="@dimen/default_font_text_view"
-                    android:text="Forward connections to SOCKS5 endpoint." />
+                    android:text="@string/settings_socks5_desc" />
             </LinearLayout>
 
             <com.google.android.material.switchmaterial.SwitchMaterial
@@ -466,7 +457,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:textSize="@dimen/large_font_text_view"
-                    android:text="Enable HTTP(S) Proxy" />
+                    android:text="@string/settings_https_heading" />
 
                 <TextView
                     android:id="@+id/settings_activity_http_proxy_desc"
@@ -476,7 +467,7 @@
                     android:paddingTop="5dp"
                     android:paddingBottom="5dp"
                     android:textSize="@dimen/default_font_text_view"
-                    android:text="This setting is only a recommendation and it is possible that apps will ignore it." />
+                    android:text="@string/settings_https_desc" />
             </LinearLayout>
 
             <com.google.android.material.switchmaterial.SwitchMaterial
@@ -506,7 +497,7 @@
             android:layout_height="wrap_content"
             android:fontFamily="sans-serif-smallcaps"
             android:padding="10dp"
-            android:text="General"
+            android:text="@string/settings_general_header"
             android:textSize="@dimen/large_font_text_view"
             android:textColor="@color/secondaryText" />
 
@@ -535,14 +526,14 @@
                     android:layout_height="wrap_content"
                     android:paddingTop="5dp"
                     android:textSize="@dimen/large_font_text_view"
-                    android:text="Refresh Data" />
+                    android:text="@string/settings_refresh_heading" />
 
                 <TextView
                     android:id="@+id/settings_activity_refresh_desc"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:textSize="@dimen/default_font_text_view"
-                    android:text="Re-sync application list." />
+                    android:text="@string/settings_refresh_desc" />
             </LinearLayout>
 
             <androidx.appcompat.widget.AppCompatImageView
@@ -579,14 +570,14 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:textSize="@dimen/large_font_text_view"
-                    android:text="Enable DNS and Firewall logs" />
+                    android:text="@string/settings_enable_logs" />
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:paddingTop="5dp"
                     android:textSize="@dimen/default_font_text_view"
-                    android:text="All the DNS and Firewall logs are stored locally." />
+                    android:text="@string/settings_enable_logs_desc" />
             </LinearLayout>
 
             <com.google.android.material.switchmaterial.SwitchMaterial
@@ -625,14 +616,14 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:textSize="@dimen/large_font_text_view"
-                    android:text="Auto-start on bootup (experimental)" />
+                    android:text="@string/settings_autostart_bootup_heading" />
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:paddingTop="5dp"
                     android:textSize="@dimen/default_font_text_view"
-                    android:text="Start RethinkDNS if it was running before device bootup." />
+                    android:text="@string/settings_autostart_bootup_desc" />
             </LinearLayout>
 
             <com.google.android.material.switchmaterial.SwitchMaterial

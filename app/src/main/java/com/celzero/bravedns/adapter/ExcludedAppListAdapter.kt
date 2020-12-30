@@ -39,19 +39,19 @@ import com.celzero.bravedns.R
 import com.celzero.bravedns.database.AppDatabase
 import com.celzero.bravedns.database.AppInfo
 import com.celzero.bravedns.database.AppInfoRepository
+import com.celzero.bravedns.database.CategoryInfoRepository
 import com.celzero.bravedns.ui.HomeScreenActivity.GlobalVariable.DEBUG
 import com.celzero.bravedns.util.Constants.Companion.LOG_TAG
+import com.celzero.bravedns.util.ThrowingHandler
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 
-class ExcludedAppListAdapter(val context: Context) : PagedListAdapter<AppInfo, ExcludedAppListAdapter.ExcludedAppInfoViewHolder>(DIFF_CALLBACK) {
-    var mDb: AppDatabase = AppDatabase.invoke(context.applicationContext)
-    var appInfoRepository: AppInfoRepository
-
-    init {
-        appInfoRepository = mDb.appInfoRepository()
-    }
+class ExcludedAppListAdapter(
+    private val context: Context,
+    private val appInfoRepository: AppInfoRepository,
+    private val categoryInfoRepository: CategoryInfoRepository
+) : PagedListAdapter<AppInfo, ExcludedAppListAdapter.ExcludedAppInfoViewHolder>(DIFF_CALLBACK) {
 
     companion object {
         private val DIFF_CALLBACK = object :
@@ -143,7 +143,6 @@ class ExcludedAppListAdapter(val context: Context) : PagedListAdapter<AppInfo, E
                 checkBox.isChecked = status
                 GlobalScope.launch(Dispatchers.IO) {
                     appInfoRepository.updateExcludedList(appInfo.uid, status)
-                    val categoryInfoRepository = mDb.categoryInfoRepository()
                     val count = appInfoRepository.getBlockedCountForCategory(appInfo.appCategory)
                     val excludedCount = appInfoRepository.getExcludedAppCountForCategory(appInfo.appCategory)
                     val whitelistCount = appInfoRepository.getBlockedCountForCategory(appInfo.appCategory)
@@ -162,11 +161,7 @@ class ExcludedAppListAdapter(val context: Context) : PagedListAdapter<AppInfo, E
 
         private fun showDialog(packageList: List<AppInfo>, appName: String, isInternet: Boolean): Boolean {
             //Change the handler logic into some other
-            val handler: Handler = object : Handler() {
-                override fun handleMessage(mesg: Message?) {
-                    throw RuntimeException()
-                }
-            }
+            val handler: Handler = ThrowingHandler()
             var positiveTxt = ""
             val packageNameList: List<String> = packageList.map { it.appName }
             var proceedBlocking: Boolean = false
@@ -199,16 +194,16 @@ class ExcludedAppListAdapter(val context: Context) : PagedListAdapter<AppInfo, E
             /*val alertDialog : AlertDialog = builderSingle.create()
             alertDialog.getListView().setOnItemClickListener({ adapterView, subview, i, l -> })*/
             builderSingle.setPositiveButton(
-                positiveTxt,
-                DialogInterface.OnClickListener { dialogInterface: DialogInterface, i: Int ->
-                    proceedBlocking = true
-                    handler.sendMessage(handler.obtainMessage())
-                }).setNeutralButton(
-                "Go Back",
-                DialogInterface.OnClickListener { dialogInterface: DialogInterface, i: Int ->
-                    handler.sendMessage(handler.obtainMessage());
-                    proceedBlocking = false
-                })
+                positiveTxt
+            ) { dialogInterface: DialogInterface, i: Int ->
+                proceedBlocking = true
+                handler.sendMessage(handler.obtainMessage())
+            }.setNeutralButton(
+                "Go Back"
+            ) { dialogInterface: DialogInterface, i: Int ->
+                handler.sendMessage(handler.obtainMessage())
+                proceedBlocking = false
+            }
 
             val alertDialog: AlertDialog = builderSingle.show()
             alertDialog.listView.setOnItemClickListener { adapterView, subview, i, l -> }

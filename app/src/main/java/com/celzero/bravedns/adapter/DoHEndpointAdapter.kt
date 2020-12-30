@@ -33,10 +33,10 @@ import androidx.paging.PagedListAdapter
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
 import com.celzero.bravedns.R
-import com.celzero.bravedns.database.AppDatabase
 import com.celzero.bravedns.database.DoHEndpoint
 import com.celzero.bravedns.database.DoHEndpointRepository
 import com.celzero.bravedns.service.PersistentState
+import com.celzero.bravedns.service.QueryTracker
 import com.celzero.bravedns.ui.DNSConfigureWebViewActivity
 import com.celzero.bravedns.ui.HomeScreenActivity.GlobalVariable.DEBUG
 import com.celzero.bravedns.ui.HomeScreenActivity.GlobalVariable.appMode
@@ -51,13 +51,11 @@ import settings.Settings
 import xdns.Xdns.getBlocklistStampFromURL
 
 
-class DoHEndpointAdapter(val context: Context, val listener: UIUpdateInterface) : PagedListAdapter<DoHEndpoint, DoHEndpointAdapter.DoHEndpointViewHolder>(DIFF_CALLBACK) {
-    var mDb: AppDatabase = AppDatabase.invoke(context.applicationContext)
-    var doHEndpointRepository: DoHEndpointRepository
-
-    init {
-        doHEndpointRepository = mDb.doHEndpointsRepository()
-    }
+class DoHEndpointAdapter(private val context: Context,
+                         private val doHEndpointRepository: DoHEndpointRepository,
+                         private val persistentState:PersistentState,
+                         private val queryTracker: QueryTracker,
+                         val listener: UIUpdateInterface) : PagedListAdapter<DoHEndpoint, DoHEndpointAdapter.DoHEndpointViewHolder>(DIFF_CALLBACK) {
 
     companion object {
         private val DIFF_CALLBACK = object :
@@ -111,7 +109,7 @@ class DoHEndpointAdapter(val context: Context, val listener: UIUpdateInterface) 
                     urlExplanationTxt.text = "Connected."
                     Log.d(LOG_TAG, "DOH Endpoint connected - ${doHEndpoint.dohName}")
                     if(doHEndpoint.dohName == RETHINK_DNS_PLUS){
-                        val count = PersistentState.getNumberOfRemoteBlockLists(context)
+                        val count = persistentState.numberOfRemoteBlocklists
                         Log.d(LOG_TAG, "DOH Endpoint connected - ${doHEndpoint.dohName}, count- $count")
                         if (count != 0) {
                             urlExplanationTxt.text = "Connected. $count blocklists in-use."
@@ -149,7 +147,7 @@ class DoHEndpointAdapter(val context: Context, val listener: UIUpdateInterface) 
                         stamp = getBlocklistStampFromURL(doHEndpoint.dohURL)
                         if(DEBUG) Log.d(LOG_TAG, "Configure btn click: ${doHEndpoint.dohURL}, $stamp")
                     } catch (e: Exception) {
-                        Log.e(LOG_TAG, "Exception while fetching stamp from Go ${e.message}", e)
+                        Log.w(LOG_TAG, "Exception while fetching stamp from Go ${e.message}", e)
                     }
                     if(DEBUG) Log.d(LOG_TAG, "startActivityForResult - DohEndpointadapter")
                     val intent = Intent(context, DNSConfigureWebViewActivity::class.java)
@@ -163,8 +161,6 @@ class DoHEndpointAdapter(val context: Context, val listener: UIUpdateInterface) 
 
         private fun updateConnection(doHEndpoint: DoHEndpoint) {
             if(DEBUG) Log.d(LOG_TAG, "updateConnection - ${doHEndpoint.dohName}, ${doHEndpoint.dohURL}")
-            val mDb = AppDatabase.invoke(context.applicationContext)
-            val doHEndpointRepository = mDb.doHEndpointsRepository()
             doHEndpoint.dohURL = doHEndpointRepository.getConnectionURL(doHEndpoint.id)
             if (doHEndpoint.dohName == RETHINK_DNS_PLUS) {
                 var stamp = ""
@@ -218,7 +214,7 @@ class DoHEndpointAdapter(val context: Context, val listener: UIUpdateInterface) 
                 val clipboard: ClipboardManager? = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager?
                 val clip = ClipData.newPlainText("URL", url)
                 clipboard?.setPrimaryClip(clip)
-                Utilities.showToastInMidLayout(context,"URL Copied.",Toast.LENGTH_SHORT)
+                Utilities.showToastInMidLayout(context,context.getString(R.string.info_dialog_copy_toast_msg),Toast.LENGTH_SHORT)
             }
             // Create the AlertDialog
             val alertDialog: AlertDialog = builder.create()
@@ -282,8 +278,6 @@ class DoHEndpointAdapter(val context: Context, val listener: UIUpdateInterface) 
         }
 
         private fun updateDoHDetails(doHEndpoint: DoHEndpoint) {
-            val mDb = AppDatabase.invoke(context.applicationContext)
-            val doHEndpointRepository = mDb.doHEndpointsRepository()
             doHEndpoint.isSelected = true
             doHEndpointRepository.removeConnectionStatus()
             doHEndpointRepository.updateAsync(doHEndpoint)
@@ -293,8 +287,9 @@ class DoHEndpointAdapter(val context: Context, val listener: UIUpdateInterface) 
 
                 override fun onFinish() {
                     notifyDataSetChanged()
-                    PersistentState.setDNSType(context, 1)
-                    PersistentState.setConnectionModeChange(context, doHEndpoint.dohURL)
+                    persistentState.dnsType = 1
+                    persistentState.connectionModeChange = doHEndpoint.dohURL
+                    queryTracker.reinitializeQuantileEstimator()
                 }
             }.start()
             appMode?.setDNSMode(Settings.DNSModePort)

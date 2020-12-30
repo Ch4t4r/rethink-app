@@ -22,7 +22,6 @@ import android.content.DialogInterface
 import android.os.CountDownTimer
 import android.os.Handler
 import android.os.Looper
-import android.os.Message
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
@@ -38,9 +37,7 @@ import androidx.core.content.ContextCompat
 import com.bumptech.glide.Glide
 import com.celzero.bravedns.R
 import com.celzero.bravedns.automaton.FirewallManager
-import com.celzero.bravedns.database.AppDatabase
-import com.celzero.bravedns.database.AppInfo
-import com.celzero.bravedns.database.CategoryInfo
+import com.celzero.bravedns.database.*
 import com.celzero.bravedns.service.PersistentState
 import com.celzero.bravedns.ui.HomeScreenActivity
 import com.celzero.bravedns.ui.HomeScreenActivity.GlobalVariable.DEBUG
@@ -48,6 +45,7 @@ import com.celzero.bravedns.ui.HomeScreenActivity.GlobalVariable.isSearchEnabled
 import com.celzero.bravedns.util.Constants.Companion.APP_CAT_SYSTEM_APPS
 import com.celzero.bravedns.util.Constants.Companion.APP_CAT_SYSTEM_COMPONENTS
 import com.celzero.bravedns.util.Constants.Companion.LOG_TAG
+import com.celzero.bravedns.util.ThrowingHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
@@ -57,6 +55,9 @@ import java.util.*
 
 class FirewallAppListAdapter internal constructor(
     private val context: Context,
+    private val appInfoRepository:AppInfoRepository,
+    private val categoryInfoRepository:CategoryInfoRepository,
+    private val persistentState: PersistentState,
     private var titleList: List<CategoryInfo>,
     private var dataList: HashMap<CategoryInfo, ArrayList<AppInfo>>
 ) : BaseExpandableListAdapter() {
@@ -191,9 +192,8 @@ class FirewallAppListAdapter internal constructor(
 
         fwWifiImg.setOnClickListener {
             isSearchEnabled = false
+            fwWifiImg.isEnabled = false
             val isInternetAllowed = appInfoDetail.isInternetAllowed
-            val mDb = AppDatabase.invoke(context.applicationContext)
-            val appInfoRepository = mDb.appInfoRepository()
             val appUIDList = appInfoRepository.getAppListForUID(appInfoDetail.uid)
             var blockAllApps = false
             if (appUIDList.size > 1) {
@@ -202,17 +202,15 @@ class FirewallAppListAdapter internal constructor(
 
             val activityManager: ActivityManager = context.getSystemService(Activity.ACTIVITY_SERVICE) as ActivityManager
             if (appUIDList.size <= 1 || blockAllApps) {
-                /*object : CountDownTimer(500, 250) {
+                object : CountDownTimer(500, 250) {
                     override fun onTick(millisUntilFinished: Long) {
-                        fwWifiImg.visibility = View.GONE
-                        firewallApkProgressBar.visibility = View.VISIBLE
+                        fwWifiImg.isEnabled = false
                     }
 
                     override fun onFinish() {
-                        firewallApkProgressBar.visibility = View.GONE
-                        fwWifiImg.visibility = View.VISIBLE
+                        fwWifiImg.isEnabled = true
                     }
-                }.start()*/
+                }.start()
 
                 fwWifiImg.isEnabled = false
                 fwWifiImg.isChecked = isInternetAllowed
@@ -227,13 +225,12 @@ class FirewallAppListAdapter internal constructor(
                 CoroutineScope(Dispatchers.IO).launch {
                     appUIDList.forEach {
                         HomeScreenActivity.GlobalVariable.appList[it.packageInfo]!!.isInternetAllowed = isInternetAllowed
-                        PersistentState.setExcludedPackagesWifi(it.packageInfo, !isInternetAllowed, context)
+                        persistentState.modifyAllowedWifi(it.packageInfo, !isInternetAllowed)
                         FirewallManager.updateAppInternetPermission(it.packageInfo, !isInternetAllowed)
                         FirewallManager.updateAppInternetPermissionByUID(it.uid, !isInternetAllowed)
-                        val categoryInfoRepository = mDb.categoryInfoRepository()
                         categoryInfoRepository.updateNumberOfBlocked(it.appCategory,isInternetAllowed)
 
-                        if(PersistentState.getKillAppOnFirewall(context)) {
+                        if(persistentState.killAppOnFirewall) {
                             try {
                                 activityManager.killBackgroundProcesses(it.packageInfo)
                             } catch (e: Exception) {
@@ -366,7 +363,7 @@ class FirewallAppListAdapter internal constructor(
         } else {
             appCountTV.text = numberOfApps.toString() + "/" + numberOfApps.toString() + " apps blocked"
         }*/
-        appCountTV.text = "${listTitle.numOfAppsBlocked} blocked, ${listTitle.numOfAppWhitelisted} whitelisted, ${listTitle.numOfAppsExcluded} excluded"
+        appCountTV.text = "${listTitle.numOfAppsBlocked} blocked, ${listTitle.numOfAppWhitelisted} whitelisted, ${listTitle.numOfAppsExcluded} excluded."
         //appCountTV.text = "Blocked: ${listTitle.numOfAppsBlocked}, Whitelisted: ${listTitle.numOfAppWhitelisted},\nExcluded: ${listTitle.numOfAppsExcluded}, Total Apps: ${listTitle.numberOFApps} "
 
         val list = dataList[listTitle]
@@ -400,8 +397,6 @@ class FirewallAppListAdapter internal constructor(
         internetChk.setOnClickListener {
             isSearchEnabled = false
             if(DEBUG) Log.d(LOG_TAG, "Category block clicked : $isSearchEnabled")
-            val mDb = AppDatabase.invoke(context.applicationContext)
-            val appInfoRepository = mDb.appInfoRepository()
             var proceedBlock = false
             proceedBlock = if (listTitle.categoryName == APP_CAT_SYSTEM_APPS && isInternetAllowed) {
                 showDialogForSystemAppBlock(false)
@@ -442,11 +437,11 @@ class FirewallAppListAdapter internal constructor(
                 FirewallManager.updateCategoryAppsInternetPermission(
                     listTitle.categoryName,
                     !isInternet,
-                    context
+                    context,
+                    persistentState
                 )
 
                 GlobalScope.launch(Dispatchers.IO) {
-                    val categoryInfoRepository = mDb.categoryInfoRepository()
                     val count = appInfoRepository.updateInternetForAppCategory(listTitle.categoryName, !isInternet)
                     if(DEBUG) Log.d(LOG_TAG,"Apps updated : $count, $isInternet")
                     //val count = appInfoRepository.getBlockedCountForCategory(listTitle.categoryName)
@@ -489,11 +484,7 @@ class FirewallAppListAdapter internal constructor(
 
     private fun showDialog(packageList: List<AppInfo>, appName: String, isInternet: Boolean): Boolean {
         //Change the handler logic into some other
-        val handler: Handler = object : Handler() {
-            override fun handleMessage(mesg: Message?) {
-                throw RuntimeException()
-            }
-        }
+        val handler: Handler = ThrowingHandler()
         var positiveTxt = ""
         val packageNameList: List<String> = packageList.map { it.appName }
         var proceedBlocking: Boolean = false
@@ -526,16 +517,16 @@ class FirewallAppListAdapter internal constructor(
         /*val alertDialog : AlertDialog = builderSingle.create()
         alertDialog.getListView().setOnItemClickListener({ adapterView, subview, i, l -> })*/
         builderSingle.setPositiveButton(
-            positiveTxt,
-            DialogInterface.OnClickListener { dialogInterface: DialogInterface, i: Int ->
-                proceedBlocking = true
-                handler.sendMessage(handler.obtainMessage())
-            }).setNeutralButton(
-            "Go Back",
-            DialogInterface.OnClickListener { dialogInterface: DialogInterface, i: Int ->
-                handler.sendMessage(handler.obtainMessage());
-                proceedBlocking = false
-            })
+            positiveTxt
+        ) { dialogInterface: DialogInterface, i: Int ->
+            proceedBlocking = true
+            handler.sendMessage(handler.obtainMessage())
+        }.setNeutralButton(
+            "Go Back"
+        ) { dialogInterface: DialogInterface, i: Int ->
+            handler.sendMessage(handler.obtainMessage())
+            proceedBlocking = false
+        }
 
         val alertDialog: AlertDialog = builderSingle.show()
         alertDialog.listView.setOnItemClickListener { adapterView, subview, i, l -> }
@@ -550,11 +541,7 @@ class FirewallAppListAdapter internal constructor(
 
     private fun showDialogForSystemAppBlock(isSysComponent : Boolean): Boolean {
         //Change the handler logic into some other
-        val handlerDelete: Handler = object : Handler() {
-            override fun handleMessage(mesg: Message?) {
-                throw RuntimeException()
-            }
-        }
+        val handlerDelete: Handler = ThrowingHandler()
         var proceedBlocking: Boolean = false
 
         val builderSingle: AlertDialog.Builder = AlertDialog.Builder(context)
@@ -571,16 +558,16 @@ class FirewallAppListAdapter internal constructor(
 
 
         builderSingle.setPositiveButton(
-            "Proceed",
-            DialogInterface.OnClickListener { dialogInterface: DialogInterface, i: Int ->
-                proceedBlocking = true
-                handlerDelete.sendMessage(handlerDelete.obtainMessage())
-            }).setNegativeButton(
-            "Go Back",
-            DialogInterface.OnClickListener { dialogInterface: DialogInterface, i: Int ->
-                handlerDelete.sendMessage(handlerDelete.obtainMessage())
-                proceedBlocking = false
-            })
+            "Proceed"
+        ) { dialogInterface: DialogInterface, i: Int ->
+            proceedBlocking = true
+            handlerDelete.sendMessage(handlerDelete.obtainMessage())
+        }.setNegativeButton(
+            "Go Back"
+        ) { dialogInterface: DialogInterface, i: Int ->
+            handlerDelete.sendMessage(handlerDelete.obtainMessage())
+            proceedBlocking = false
+        }
 
         val alertDialog: AlertDialog = builderSingle.show()
         alertDialog.setCancelable(false)

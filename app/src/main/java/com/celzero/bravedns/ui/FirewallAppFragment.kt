@@ -1,18 +1,18 @@
 /*
-Copyright 2020 RethinkDNS and its authors
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-https://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
+ * Copyright 2020 RethinkDNS and its authors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package com.celzero.bravedns.ui
 
 import android.os.Bundle
@@ -28,19 +28,22 @@ import android.widget.*
 import androidx.appcompat.widget.SearchView
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
-import androidx.fragment.app.viewModels
 import androidx.lifecycle.Observer
 import com.celzero.bravedns.R
 import com.celzero.bravedns.adapter.FirewallAppListAdapter
-import com.celzero.bravedns.database.AppDatabase
 import com.celzero.bravedns.database.AppInfo
 import com.celzero.bravedns.database.CategoryInfo
+import com.celzero.bravedns.database.CategoryInfoRepository
+import com.celzero.bravedns.database.RefreshDatabase
+import com.celzero.bravedns.service.PersistentState
 import com.celzero.bravedns.ui.HomeScreenActivity.GlobalVariable.DEBUG
 import com.celzero.bravedns.ui.HomeScreenActivity.GlobalVariable.isSearchEnabled
 import com.celzero.bravedns.util.Constants.Companion.LOG_TAG
-import com.celzero.bravedns.util.RefreshDatabase
 import com.celzero.bravedns.util.Utilities
 import com.celzero.bravedns.viewmodel.FirewallAppViewModel
+import org.koin.android.ext.android.get
+import org.koin.android.ext.android.inject
+import org.koin.androidx.viewmodel.ext.android.viewModel
 
 class FirewallAppFragment : Fragment(), SearchView.OnQueryTextListener {
 
@@ -55,12 +58,13 @@ class FirewallAppFragment : Fragment(), SearchView.OnQueryTextListener {
     private lateinit var refreshListImageView : ImageView
 
     private lateinit var animation: Animation
-    private lateinit var refreshDatabase: RefreshDatabase
 
     private var firewallExpandableList: ExpandableListView? = null
 
-    private val firewallAppInfoViewModel : FirewallAppViewModel by viewModels()
-
+    private val firewallAppInfoViewModel : FirewallAppViewModel by viewModel()
+    private val categoryInfoRepository by inject<CategoryInfoRepository>()
+    private val refreshDatabase by inject<RefreshDatabase>()
+    private val persistentState by inject<PersistentState>()
 
     companion object {
            fun newInstance() = FirewallAppFragment()
@@ -75,7 +79,6 @@ class FirewallAppFragment : Fragment(), SearchView.OnQueryTextListener {
     }
 
     private fun initView(view: View) {
-        FirewallAppViewModel.setContext(requireContext())
         categoryShowTxt = view.findViewById(R.id.firewall_category_show_txt)
         categoryState = true
         loadingProgressBar = view.findViewById(R.id.firewall_update_progress)
@@ -83,7 +86,7 @@ class FirewallAppFragment : Fragment(), SearchView.OnQueryTextListener {
         refreshListImageView = view.findViewById(R.id.firewall_app_refresh_list)
         firewallExpandableList!!.visibility = View.VISIBLE
         if (firewallExpandableList != null) {
-            adapterList = FirewallAppListAdapter(requireContext(), titleList as ArrayList<CategoryInfo>, listData)
+            adapterList = FirewallAppListAdapter(requireContext(), get(), categoryInfoRepository, persistentState, titleList as ArrayList<CategoryInfo>, listData)
             firewallExpandableList!!.setAdapter(adapterList)
 
             firewallExpandableList!!.setOnGroupClickListener { _, view, i, l ->
@@ -91,7 +94,7 @@ class FirewallAppFragment : Fragment(), SearchView.OnQueryTextListener {
                 false
             }
 
-            firewallExpandableList!!.setOnGroupExpandListener { it ->
+            firewallExpandableList!!.setOnGroupExpandListener {
                 //listData[titleList!![it]]!!.sortBy { it.isInternetAllowed }
             }
         }
@@ -103,9 +106,6 @@ class FirewallAppFragment : Fragment(), SearchView.OnQueryTextListener {
         animation = RotateAnimation(0.0f, 360.0f, Animation.RELATIVE_TO_SELF, 0.5f, Animation.RELATIVE_TO_SELF, 0.5f)
         animation.repeatCount = -1
         animation.duration = 750
-
-        refreshDatabase = RefreshDatabase(requireContext())
-
     }
 
     private fun initClickListeners() {
@@ -146,12 +146,16 @@ class FirewallAppFragment : Fragment(), SearchView.OnQueryTextListener {
             override fun onTick(millisUntilFinished: Long) {}
 
             override fun onFinish() {
-                refreshListImageView.clearAnimation()
-                Utilities.showToastInMidLayout(requireContext(),getString(R.string.refresh_complete), Toast.LENGTH_SHORT)
+                if(isAdded) {
+                    refreshListImageView.clearAnimation()
+                    if(RethinkDNSApplication.context != null) {
+                        Utilities.showToastInMidLayout(RethinkDNSApplication.context!!, getString(R.string.refresh_complete), Toast.LENGTH_SHORT)
+                    }
+                }
             }
         }.start()
         refreshDatabase.refreshAppInfoDatabase()
-        //refreshDatabase.updateCategoryInDB()
+        refreshDatabase.updateCategoryInDB()
     }
 
     override fun onQueryTextSubmit(query: String?): Boolean {
@@ -195,7 +199,7 @@ class FirewallAppFragment : Fragment(), SearchView.OnQueryTextListener {
         //(adapterList as FirewallAppListAdapter).filterData(query!!)
         //observersForUI("%$query%")
         if(DEBUG) Log.d(LOG_TAG, "Category block onQueryTextChange : ${isSearchEnabled}, $query")
-        if (HomeScreenActivity.GlobalVariable.isSearchEnabled) {
+        if (isSearchEnabled) {
             object : CountDownTimer(500, 1000) {
                 override fun onTick(millisUntilFinished: Long) {
                 }
@@ -238,16 +242,12 @@ class FirewallAppFragment : Fragment(), SearchView.OnQueryTextListener {
 
 
     private fun observersForUI() {
-        val mDb = AppDatabase.invoke(requireContext().applicationContext)
-        //val appInfoRepository = mDb.appInfoRepository()
-
-        val categoryInfoRepository = mDb.categoryInfoRepository()
         categoryInfoRepository.getAppCategoryForLiveData().observe(viewLifecycleOwner, Observer {
             titleList = it.toMutableList()
         })
 
-        firewallAppInfoViewModel.firewallAppDetailsList.observe(viewLifecycleOwner, Observer { itAppInfo ->
-            isSearchEnabled  = false
+        firewallAppInfoViewModel.firewallAppDetailsList.observe(viewLifecycleOwner) { itAppInfo ->
+            isSearchEnabled = false
             val list = itAppInfo!!
             titleList = categoryInfoRepository.getAppCategoryList().toMutableList()
             val iterator = titleList!!.iterator()
@@ -272,8 +272,8 @@ class FirewallAppFragment : Fragment(), SearchView.OnQueryTextListener {
                 loadingProgressBar.visibility = View.VISIBLE
                 firewallExpandableList!!.visibility = View.GONE
             }
-            isSearchEnabled  = true
-        })
+            isSearchEnabled = true
+        }
 
 
     }

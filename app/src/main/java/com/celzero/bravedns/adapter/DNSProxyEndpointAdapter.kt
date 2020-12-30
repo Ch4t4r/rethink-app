@@ -34,10 +34,10 @@ import androidx.paging.PagedListAdapter
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
 import com.celzero.bravedns.R
-import com.celzero.bravedns.database.AppDatabase
 import com.celzero.bravedns.database.DNSProxyEndpoint
 import com.celzero.bravedns.database.DNSProxyEndpointRepository
 import com.celzero.bravedns.service.PersistentState
+import com.celzero.bravedns.service.QueryTracker
 import com.celzero.bravedns.ui.HomeScreenActivity
 import com.celzero.bravedns.ui.HomeScreenActivity.GlobalVariable.appList
 import com.celzero.bravedns.util.Constants.Companion.LOG_TAG
@@ -48,14 +48,15 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import settings.Settings
 
-class DNSProxyEndpointAdapter(val context: Context, val listener: UIUpdateInterface) : PagedListAdapter<DNSProxyEndpoint, DNSProxyEndpointAdapter.DNSProxyEndpointViewHolder>(DIFF_CALLBACK) {
-    var mDb: AppDatabase = AppDatabase.invoke(context.applicationContext)
-    var dnsProxyEndpointRepository: DNSProxyEndpointRepository
+class DNSProxyEndpointAdapter(private val context: Context,
+                              private val dnsProxyEndpointRepository: DNSProxyEndpointRepository,
+                              private val persistentState:PersistentState,
+                              private val queryTracker: QueryTracker,
+                              val listener: UIUpdateInterface) : PagedListAdapter<DNSProxyEndpoint, DNSProxyEndpointAdapter.DNSProxyEndpointViewHolder>(DIFF_CALLBACK) {
     private var PROXY_TYPE_INTERNAL: String
     private var PROXY_TYPE_EXTERNAL: String
 
     init {
-        dnsProxyEndpointRepository = mDb.dnsProxyEndpointRepository()
         PROXY_TYPE_INTERNAL = "Internal"
         PROXY_TYPE_EXTERNAL = "External"
     }
@@ -173,9 +174,9 @@ class DNSProxyEndpointAdapter(val context: Context, val listener: UIUpdateInterf
             val app = appList[appName]?.appName
             //set message for alert dialog
             if(app != null && !app.isNullOrEmpty()) {
-                builder.setMessage("AppName: "+app + "\n\n" + "URL: "+url + "\n\n" + "Port: "+message)
+                builder.setMessage("AppName: $app\n\nURL: $url\n\nPort: $message")
             }else{
-                builder.setMessage("AppName: Nobody \n\n" + "URL: "+ url + "\n\n" +"Port: " + message)
+                builder.setMessage("AppName: Nobody \n\nURL: $url\n\nPort: $message")
             }
             builder.setCancelable(true)
             //performing positive action
@@ -186,7 +187,7 @@ class DNSProxyEndpointAdapter(val context: Context, val listener: UIUpdateInterf
                 val clipboard: ClipboardManager? = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager?
                 val clip = ClipData.newPlainText("URL", url)
                 clipboard?.setPrimaryClip(clip)
-                Utilities.showToastInMidLayout(context, "URL Copied.", Toast.LENGTH_SHORT)
+                Utilities.showToastInMidLayout(context, context.getString(R.string.info_dialog_copy_toast_msg), Toast.LENGTH_SHORT)
             }
             // Create the AlertDialog
             val alertDialog: AlertDialog = builder.create()
@@ -263,8 +264,6 @@ class DNSProxyEndpointAdapter(val context: Context, val listener: UIUpdateInterf
         }*/
 
         private fun updateDNSProxyDetails(dnsProxyEndpoint: DNSProxyEndpoint) {
-            val mDb = AppDatabase.invoke(context.applicationContext)
-            val dnsProxyEndpointRepository = mDb.dnsProxyEndpointRepository()
             dnsProxyEndpoint.isSelected = true
             dnsProxyEndpointRepository.removeConnectionStatus()
             dnsProxyEndpointRepository.updateAsync(dnsProxyEndpoint)
@@ -275,6 +274,7 @@ class DNSProxyEndpointAdapter(val context: Context, val listener: UIUpdateInterf
 
                 override fun onFinish() {
                     notifyDataSetChanged()
+                    queryTracker.reinitializeQuantileEstimator()
                 }
             }.start()
 
@@ -286,9 +286,9 @@ class DNSProxyEndpointAdapter(val context: Context, val listener: UIUpdateInterf
                 HomeScreenActivity.GlobalVariable.appMode?.setDNSMode(Settings.DNSModeProxyIP)
             }
             listener.updateUIFromAdapter(3)
-            PersistentState.setDNSType(context, 3)
-            PersistentState.setConnectionModeChange(context, dnsProxyEndpoint.proxyIP!!)
-            PersistentState.setDNSProxyIDChange(context, dnsProxyEndpoint.id)
+            persistentState.dnsType = 3
+            persistentState.connectionModeChange = dnsProxyEndpoint.proxyIP!!
+            persistentState.dnsProxyIDChange = dnsProxyEndpoint.id
             //mDb.close()
         }
     }

@@ -22,6 +22,8 @@ import android.os.Build
 import android.util.Log
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import com.celzero.bravedns.util.Constants.Companion.LOG_TAG
+import org.koin.core.component.KoinComponent
+import org.koin.core.component.inject
 
 class VpnController {
 
@@ -30,8 +32,6 @@ class VpnController {
         private var braveVpnService : BraveVPNService ? = null
         private var connectionState: BraveVPNService.State? = null
         private var tracker: QueryTracker? = null
-        private var ipTracker : IPTracker ?= null
-        private var dnsLogTracker : DNSLogTracker ?= null
 
         @Synchronized
         fun getInstance(): VpnController? {
@@ -85,7 +85,7 @@ class VpnController {
             Log.i(LOG_TAG,"braveVPNService is not null")
             return
         }
-        PersistentState.setVpnEnabled(context, true)
+        VpnControllerHelper.persistentState.vpnEnabled = true
         stateChanged(context)
         val startServiceIntent = Intent(context, BraveVPNService::class.java)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -110,7 +110,7 @@ class VpnController {
     @Synchronized
     fun stop(context: Context?) {
         Log.i(LOG_TAG,"VPN Controller stop - ${context!!}")
-        PersistentState.setVpnEnabled(context, false)
+        VpnControllerHelper.persistentState.vpnEnabled = false
         connectionState = null //BraveVPNService.State.STOP
         if (braveVpnService != null) {
             braveVpnService!!.signalStopService(true)
@@ -121,7 +121,7 @@ class VpnController {
 
     //@Synchronized
     fun getState(context: Context?): VpnState? {
-        val requested: Boolean = PersistentState.getVpnEnabled(context!!)
+        val requested: Boolean = VpnControllerHelper.persistentState.vpnEnabled
         val on = braveVpnService != null && braveVpnService!!.isOn()
         /*if(connectionState == null){
             connectionState = BraveVPNService.State.NEW
@@ -129,35 +129,12 @@ class VpnController {
         return VpnState(requested, on, connectionState)
     }
 
-    @Synchronized
-    fun getTracker(context: Context?): QueryTracker? {
-        if (tracker == null) {
-            tracker = QueryTracker(context)
-        }
-        return tracker
-    }
-
-    @Synchronized
-    fun getIPTracker(context : Context?): IPTracker? {
-        if(ipTracker == null){
-            ipTracker = IPTracker(context)
-        }
-        return ipTracker
-    }
-
-    /**
-     * DNS Log tracker will record the dns transactions in database.
-     * This method will return the DNSLogTracker object.
-     */
-    @Synchronized
-    fun getDNSLogTracker(context: Context): DNSLogTracker? {
-        if(dnsLogTracker == null){
-            dnsLogTracker = DNSLogTracker(context)
-        }
-        return dnsLogTracker
-    }
-
     /*fun test(){
         braveVpnService!!.test()
     }*/
+}
+
+internal object VpnControllerHelper:KoinComponent {
+    val persistentState by inject<PersistentState>()
+    val queryTracker by inject<QueryTracker>()
 }

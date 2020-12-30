@@ -1,18 +1,18 @@
 /*
-Copyright 2020 RethinkDNS and its authors
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-https://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
+ * Copyright 2020 RethinkDNS and its authors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package com.celzero.bravedns.ui
 
 import android.os.Bundle
@@ -27,16 +27,13 @@ import android.widget.TextView
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.widget.SearchView
 import androidx.fragment.app.Fragment
-import androidx.fragment.app.viewModels
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.celzero.bravedns.R
 import com.celzero.bravedns.adapter.DNSQueryAdapter
-import com.celzero.bravedns.database.AppDatabase
-import com.celzero.bravedns.service.BraveVPNService
-import com.celzero.bravedns.service.PersistentState
-import com.celzero.bravedns.service.VpnController
-import com.celzero.bravedns.service.VpnState
+import com.celzero.bravedns.database.DNSLogDAO
+import com.celzero.bravedns.database.DoHEndpoint
+import com.celzero.bravedns.service.*
 import com.celzero.bravedns.ui.HomeScreenActivity.GlobalVariable.DEBUG
 import com.celzero.bravedns.ui.HomeScreenActivity.GlobalVariable.appMode
 import com.celzero.bravedns.ui.HomeScreenActivity.GlobalVariable.median50
@@ -46,10 +43,11 @@ import com.celzero.bravedns.viewmodel.DNSLogViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
+import org.koin.android.ext.android.inject
 import settings.Settings
 import java.net.MalformedURLException
 import java.net.URL
-
+import org.koin.androidx.viewmodel.ext.android.viewModel
 
 class DNSLogFragment  : Fragment(), SearchView.OnQueryTextListener {
 
@@ -75,23 +73,25 @@ class DNSLogFragment  : Fragment(), SearchView.OnQueryTextListener {
 
     private lateinit var logsDisabledTxt : TextView
 
-    private val viewModel: DNSLogViewModel by viewModels()
+    private val viewModel: DNSLogViewModel by viewModel()
     private var checkedItem = 1
-    private lateinit var filterValue: String
+    private var filterValue: String = ""
 
     lateinit var urlName: Array<String>
     lateinit var urlValues: Array<String>
     var prevSpinnerSelection: Int = 2
     var check = 2
 
+    private val dnsLogDAO by inject<DNSLogDAO>()
+    private val persistentState by inject<PersistentState>()
+
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
         super.onCreate(savedInstanceState)
         //setContentView(R.layout.activity_query_detail)
-        val view: View = inflater.inflate(R.layout.activity_query_detail, container, false)
-        urlName = resources.getStringArray(R.array.doh_endpoint_names)
-        urlValues = resources.getStringArray(R.array.doh_endpoint_urls)
-        return view
+        //urlName = resources.getStringArray(R.array.doh_endpoint_names)
+        //urlValues = resources.getStringArray(R.array.doh_endpoint_urls)
+        return inflater.inflate(R.layout.activity_query_detail, container, false)
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -123,14 +123,12 @@ class DNSLogFragment  : Fragment(), SearchView.OnQueryTextListener {
         //recyclerHeadingLL = includeView.findViewById(R.id.query_list_recycler_heading)
         noLogsTxt = includeView.findViewById(R.id.dns_log_no_log_text)
 
-        if(PersistentState.isLogsEnabled(requireContext())) {
+        if(persistentState.logsEnabled) {
             logsDisabledTxt.visibility = View.GONE
             searchLayoutLL.visibility = View.VISIBLE
             recyclerView!!.setHasFixedSize(true)
             layoutManager = LinearLayoutManager(requireContext())
             recyclerView!!.layoutManager = layoutManager
-            DNSLogViewModel.setContext(requireContext())
-
             recyclerAdapter = DNSQueryAdapter(requireContext())
             viewModel.dnsLogsList.observe(viewLifecycleOwner, androidx.lifecycle.Observer(recyclerAdapter!!::submitList))
             recyclerView!!.adapter = recyclerAdapter
@@ -146,11 +144,11 @@ class DNSLogFragment  : Fragment(), SearchView.OnQueryTextListener {
             topLayoutRL.visibility = View.VISIBLE
         }
 
-        median50.observe(viewLifecycleOwner, androidx.lifecycle.Observer {
+        median50.observe(viewLifecycleOwner, {
             latencyTxt.text = "Latency: "+median50.value.toString() + "ms"
         })
 
-        queryCountTxt.text = "Lifetime Queries: " + PersistentState.getNumOfReq(requireContext())
+        queryCountTxt.text = "Lifetime Queries: " + persistentState.getNumOfReq()
 
         editSearchView!!.setOnQueryTextListener(this)
         editSearchView!!.setOnClickListener {
@@ -172,17 +170,20 @@ class DNSLogFragment  : Fragment(), SearchView.OnQueryTextListener {
         val dnsType = appMode?.getDNSType()
 
         if (dnsType == 1) {
-            val dohDetail = appMode?.getDOHDetails()
+            var dohDetail : DoHEndpoint ?= null
+            try {
+                dohDetail  = appMode?.getDOHDetails()
+            }catch (e : Exception){
+                return
+            }
             currentDNSURL.text = resources.getString(R.string.configure_dns_connected_doh_status)
             currentDNSStatus.text = resources.getString(R.string.configure_dns_connection_name) + " "+ dohDetail?.dohName
-            //recyclerHeadingLL.visibility = View.GONE
             recyclerView?.visibility = View.VISIBLE
             noLogsTxt.visibility = View.GONE
         } else if (dnsType == 2) {
             val cryptDetails = appMode?.getDNSCryptServerCount()
             currentDNSStatus.text = resources.getString(R.string.configure_dns_connection_name) + " DNSCrypt resolvers: $cryptDetails"
             currentDNSURL.text = resources.getString(R.string.configure_dns_connected_dns_crypt_status)
-            //recyclerHeadingLL.visibility = View.GONE
             recyclerView?.visibility = View.VISIBLE
             noLogsTxt.visibility = View.GONE
         } else {
@@ -191,7 +192,9 @@ class DNSLogFragment  : Fragment(), SearchView.OnQueryTextListener {
             currentDNSStatus.text = resources.getString(R.string.configure_dns_connection_name) + " "+ proxyDetails?.proxyName
             //recyclerHeadingLL.visibility = View.GONE
             recyclerView?.visibility = View.GONE
-            noLogsTxt.visibility = View.VISIBLE
+            if(persistentState.logsEnabled) {
+                noLogsTxt.visibility = View.VISIBLE
+            }
         }
     }
 
@@ -204,7 +207,7 @@ class DNSLogFragment  : Fragment(), SearchView.OnQueryTextListener {
         // Single-choice items (initialized with checked item)
         builder.setSingleChoiceItems(singleItems, checkedItem) { dialog, which ->
             // Respond to item chosen
-            filterValue = if (which == 0) "isFilter"
+            filterValue = if (which == 0) ":isFilter"
             else ""
             checkedItem = which
             if (DEBUG) Log.d(LOG_TAG, "Filter Option selected: $filterValue")
@@ -226,8 +229,6 @@ class DNSLogFragment  : Fragment(), SearchView.OnQueryTextListener {
         //performing positive action
         builder.setPositiveButton("Delete logs") { _, _ ->
             GlobalScope.launch(Dispatchers.IO) {
-                val mDb = AppDatabase.invoke(requireContext().applicationContext)
-                val dnsLogDAO = mDb.dnsLogDAO()
                 dnsLogDAO.clearAllData()
             }
         }
@@ -274,12 +275,12 @@ class DNSLogFragment  : Fragment(), SearchView.OnQueryTextListener {
     }
 
     override fun onQueryTextSubmit(query: String?): Boolean {
-        viewModel.setFilter(query!!)
+        viewModel.setFilter(query!!, filterValue)
         return true
     }
 
     override fun onQueryTextChange(query: String?): Boolean {
-        viewModel.setFilter(query!!)
+        viewModel.setFilter(query!!, filterValue)
         return true
     }
 

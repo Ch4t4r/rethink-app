@@ -30,14 +30,15 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.widget.AppCompatButton
+import androidx.core.content.getSystemService
 import androidx.paging.PagedListAdapter
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
 import com.celzero.bravedns.R
-import com.celzero.bravedns.database.AppDatabase
 import com.celzero.bravedns.database.DNSCryptEndpoint
 import com.celzero.bravedns.database.DNSCryptEndpointRepository
 import com.celzero.bravedns.service.PersistentState
+import com.celzero.bravedns.service.QueryTracker
 import com.celzero.bravedns.ui.HomeScreenActivity.GlobalVariable.DEBUG
 import com.celzero.bravedns.ui.HomeScreenActivity.GlobalVariable.appMode
 import com.celzero.bravedns.util.Constants.Companion.LOG_TAG
@@ -48,14 +49,13 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import settings.Settings
 
-class DNSCryptEndpointAdapter(val context: Context, var listener : UIUpdateInterface) : PagedListAdapter<DNSCryptEndpoint, DNSCryptEndpointAdapter.DNSCryptEndpointViewHolder>(DIFF_CALLBACK) {
-    var mDb: AppDatabase = AppDatabase.invoke(context.applicationContext)
-    var dnsCryptEndpointRepository: DNSCryptEndpointRepository
-    //private var serverList : MutableList<DNSCryptEndpoint> = ArrayList()
 
-    init {
-        dnsCryptEndpointRepository = mDb.dnsCryptEndpointsRepository()
-    }
+class DNSCryptEndpointAdapter(private val context: Context,
+                              private val dnsCryptEndpointRepository:DNSCryptEndpointRepository,
+                              private val persistentState: PersistentState,
+                              private val queryTracker: QueryTracker,
+                              var listener : UIUpdateInterface) : PagedListAdapter<DNSCryptEndpoint, DNSCryptEndpointAdapter.DNSCryptEndpointViewHolder>(DIFF_CALLBACK) {
+    //private var serverList : MutableList<DNSCryptEndpoint> = ArrayList()
 
     companion object {
         private val DIFF_CALLBACK = object :
@@ -202,10 +202,10 @@ class DNSCryptEndpointAdapter(val context: Context, var listener : UIUpdateInter
             }
 
             builder.setNeutralButton("Copy") { dialogInterface: DialogInterface, i: Int ->
-                val clipboard: ClipboardManager? = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager?
+                val clipboard: ClipboardManager? = context.getSystemService()
                 val clip = ClipData.newPlainText("URL", url)
                 clipboard?.setPrimaryClip(clip)
-                Utilities.showToastInMidLayout(context, "URL Copied.", Toast.LENGTH_SHORT)
+                Utilities.showToastInMidLayout(context, context.getString(R.string.info_dialog_copy_toast_msg), Toast.LENGTH_SHORT)
             }
             // Create the AlertDialog
             val alertDialog: AlertDialog = builder.create()
@@ -242,8 +242,6 @@ class DNSCryptEndpointAdapter(val context: Context, var listener : UIUpdateInter
         }
 
         private fun updateDNSCryptDetails(dnsCryptEndpoint : DNSCryptEndpoint) : Boolean{
-            val mDb = AppDatabase.invoke(context.applicationContext)
-            val dnsCryptEndpointRepository = mDb.dnsCryptEndpointsRepository()
             val list = dnsCryptEndpointRepository.getConnectedDNSCrypt()
             if(list.size == 1){
                 if(!dnsCryptEndpoint.isSelected && list[0].dnsCryptURL == dnsCryptEndpoint.dnsCryptURL){
@@ -259,11 +257,12 @@ class DNSCryptEndpointAdapter(val context: Context, var listener : UIUpdateInter
 
                 override fun onFinish() {
                     notifyDataSetChanged()
-                    PersistentState.setDNSType(context, 2)
+                    persistentState.dnsType = 2
+                    queryTracker.reinitializeQuantileEstimator()
                 }
             }.start()
 
-            PersistentState.setConnectionModeChange(context, dnsCryptEndpoint.dnsCryptURL)
+            persistentState.connectionModeChange = dnsCryptEndpoint.dnsCryptURL
             listener.updateUIFromAdapter(2)
             appMode?.setDNSMode(Settings.DNSModeCryptPort)
             //mDb.close()

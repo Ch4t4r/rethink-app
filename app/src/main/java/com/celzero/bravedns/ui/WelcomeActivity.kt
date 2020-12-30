@@ -29,6 +29,7 @@ import androidx.viewpager.widget.PagerAdapter
 import androidx.viewpager.widget.ViewPager
 import com.celzero.bravedns.R
 import com.celzero.bravedns.service.PersistentState
+import org.koin.android.ext.android.inject
 
 class WelcomeActivity  : AppCompatActivity() {
 
@@ -41,10 +42,12 @@ class WelcomeActivity  : AppCompatActivity() {
     private lateinit var buttonSkip : TextView
     private lateinit var myPagerAdapter : PagerAdapter
 
+    private val persistentState by inject<PersistentState>()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        if (!PersistentState.isFirstTimeLaunch(this)) {
+        if (!persistentState.firstTimeLaunch) {
             launchHomeScreen()
         }
 
@@ -68,7 +71,7 @@ class WelcomeActivity  : AppCompatActivity() {
         }
 
         buttonNext.setOnClickListener {
-            var currentItem = getItem(1)
+            val currentItem = getItem(1)
             if(currentItem < layout.size)
                 viewPager.setCurrentItem(currentItem)
             else
@@ -106,8 +109,8 @@ class WelcomeActivity  : AppCompatActivity() {
     private fun addBottomDots(currentPage: Int) {
         dots = arrayOfNulls(layout.size)
 
-        var colorActive  = (resources.getIntArray(R.array.array_dot_active))
-        var colorInActive = resources.getIntArray(R.array.array_dot_inactive)
+        val colorActive  = (resources.getIntArray(R.array.array_dot_active))
+        val colorInActive = resources.getIntArray(R.array.array_dot_inactive)
 
         dotsLayout.removeAllViews()
         for(i in dots.indices){
@@ -127,7 +130,7 @@ class WelcomeActivity  : AppCompatActivity() {
     }
 
     private fun launchHomeScreen() {
-        PersistentState.setFirstTimeLaunch(this,false)
+        persistentState.firstTimeLaunch = false
         startActivity(Intent(this, HomeScreenActivity::class.java))
         finish()
     }

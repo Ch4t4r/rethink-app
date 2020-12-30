@@ -20,7 +20,6 @@ import android.content.Context
 import android.content.DialogInterface
 import android.os.Handler
 import android.os.Looper
-import android.os.Message
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
@@ -38,26 +37,26 @@ import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.celzero.bravedns.R
 import com.celzero.bravedns.automaton.FirewallManager
-import com.celzero.bravedns.database.AppDatabase
 import com.celzero.bravedns.database.AppInfo
 import com.celzero.bravedns.database.AppInfoRepository
+import com.celzero.bravedns.database.CategoryInfoRepository
 import com.celzero.bravedns.service.BraveVPNService.Companion.appWhiteList
 import com.celzero.bravedns.service.PersistentState
 import com.celzero.bravedns.ui.HomeScreenActivity
 import com.celzero.bravedns.ui.HomeScreenActivity.GlobalVariable.DEBUG
 import com.celzero.bravedns.util.Constants
 import com.celzero.bravedns.util.Constants.Companion.LOG_TAG
+import com.celzero.bravedns.util.ThrowingHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
-class UniversalAppListAdapter(val context: Context)  : PagedListAdapter<AppInfo, UniversalAppListAdapter.UniversalAppInfoViewHolder>(DIFF_CALLBACK) {
-    var mDb: AppDatabase = AppDatabase.invoke(context.applicationContext)
-    lateinit var appInfoRepository: AppInfoRepository
-
-    init{
-        appInfoRepository = mDb.appInfoRepository()
-    }
+class UniversalAppListAdapter(
+    private val context: Context,
+    private val appInfoRepository: AppInfoRepository,
+    private val categoryInfoRepository:CategoryInfoRepository,
+    private val persistentState:PersistentState
+)  : PagedListAdapter<AppInfo, UniversalAppListAdapter.UniversalAppInfoViewHolder>(DIFF_CALLBACK) {
 
     companion object {
         private val DIFF_CALLBACK = object :
@@ -173,7 +172,7 @@ class UniversalAppListAdapter(val context: Context)  : PagedListAdapter<AppInfo,
                     if (status) {
                         appUIDList.forEach {
                             HomeScreenActivity.GlobalVariable.appList[it.packageInfo]!!.isInternetAllowed = status
-                            PersistentState.setExcludedPackagesWifi(it.packageInfo, status, context)
+                            persistentState.modifyAllowedWifi(it.packageInfo, status)
                             FirewallManager.updateAppInternetPermission(it.packageInfo, status)
                             FirewallManager.updateAppInternetPermissionByUID(it.uid, status)
                         }
@@ -182,7 +181,6 @@ class UniversalAppListAdapter(val context: Context)  : PagedListAdapter<AppInfo,
                     appInfoRepository.updateWhiteList(appInfo.uid, status)
                     val countBlocked = appInfoRepository.getBlockedCountForCategory(appInfo.appCategory)
                     val countWhitelisted = appInfoRepository.getWhitelistCount(appInfo.appCategory)
-                    val categoryInfoRepository = mDb.categoryInfoRepository()
                     categoryInfoRepository.updateBlockedCount(appInfo.appCategory, countBlocked)
                     categoryInfoRepository.updateWhitelistCount(appInfo.appCategory, countWhitelisted)
                 }
@@ -194,11 +192,7 @@ class UniversalAppListAdapter(val context: Context)  : PagedListAdapter<AppInfo,
 
         private fun showDialog(packageList: List<AppInfo>, appName: String, isInternet: Boolean): Boolean {
             //Change the handler logic into some other
-            val handler: Handler = object : Handler() {
-                override fun handleMessage(mesg: Message?) {
-                    throw RuntimeException()
-                }
-            }
+            val handler: Handler = ThrowingHandler()
             var positiveTxt = ""
             val packageNameList: List<String> = packageList.map { it.appName }
             var proceedBlocking: Boolean = false
@@ -236,16 +230,16 @@ class UniversalAppListAdapter(val context: Context)  : PagedListAdapter<AppInfo,
             /*val alertDialog : AlertDialog = builderSingle.create()
             alertDialog.getListView().setOnItemClickListener({ adapterView, subview, i, l -> })*/
             builderSingle.setPositiveButton(
-                positiveTxt,
-                DialogInterface.OnClickListener { dialogInterface: DialogInterface, i: Int ->
-                    proceedBlocking = true
-                    handler.sendMessage(handler.obtainMessage())
-                }).setNeutralButton(
-                "Go Back",
-                DialogInterface.OnClickListener { dialogInterface: DialogInterface, i: Int ->
-                    handler.sendMessage(handler.obtainMessage());
-                    proceedBlocking = false
-                })
+                positiveTxt
+            ) { dialogInterface: DialogInterface, i: Int ->
+                proceedBlocking = true
+                handler.sendMessage(handler.obtainMessage())
+            }.setNeutralButton(
+                "Go Back"
+            ) { dialogInterface: DialogInterface, i: Int ->
+                handler.sendMessage(handler.obtainMessage())
+                proceedBlocking = false
+            }
 
             val alertDialog: AlertDialog = builderSingle.show()
             alertDialog.listView.setOnItemClickListener { adapterView, subview, i, l -> }

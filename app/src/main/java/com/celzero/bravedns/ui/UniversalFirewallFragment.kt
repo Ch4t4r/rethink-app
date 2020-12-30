@@ -31,14 +31,13 @@ import androidx.cardview.widget.CardView
 import androidx.core.content.ContextCompat
 import androidx.core.widget.NestedScrollView
 import androidx.fragment.app.Fragment
-import androidx.fragment.app.viewModels
-import androidx.lifecycle.Observer
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.celzero.bravedns.R
 import com.celzero.bravedns.adapter.UniversalAppListAdapter
 import com.celzero.bravedns.adapter.UniversalBlockedRulesAdapter
-import com.celzero.bravedns.database.AppDatabase
+import com.celzero.bravedns.database.AppInfoRepository
+import com.celzero.bravedns.database.BlockedConnectionsRepository
 import com.celzero.bravedns.service.BraveVPNService
 import com.celzero.bravedns.service.PersistentState
 import com.celzero.bravedns.ui.HomeScreenActivity.GlobalVariable
@@ -48,6 +47,9 @@ import com.celzero.bravedns.util.Constants.Companion.LOG_TAG
 import com.celzero.bravedns.util.Utilities
 import com.celzero.bravedns.viewmodel.AppListViewModel
 import com.celzero.bravedns.viewmodel.BlockedConnectionsViewModel
+import org.koin.android.ext.android.get
+import org.koin.android.ext.android.inject
+import org.koin.androidx.viewmodel.ext.android.viewModel
 
 
 /**
@@ -92,11 +94,15 @@ class UniversalFirewallFragment : Fragment() , SearchView.OnQueryTextListener {
     private var recyclerAdapter : UniversalAppListAdapter ?= null
     private var recyclerRulesAdapter : UniversalBlockedRulesAdapter?= null
     private var layoutManager: RecyclerView.LayoutManager? = null
-    private val viewModel: BlockedConnectionsViewModel by viewModels()
-    private val appInfoViewModel : AppListViewModel by viewModels()
+    private val viewModel: BlockedConnectionsViewModel by viewModel()
+    private val appInfoViewModel : AppListViewModel by viewModel()
 
     private var universalState : Boolean = false
     private var ipListState : Boolean = false
+
+    private val appInfoRepository by inject<AppInfoRepository>()
+    private val blockedConnectionsRepository by inject<BlockedConnectionsRepository>()
+    private val persistentState by inject<PersistentState>()
 
     private lateinit var scrollView : NestedScrollView
 
@@ -156,10 +162,8 @@ class UniversalFirewallFragment : Fragment() , SearchView.OnQueryTextListener {
         recyclerView.setHasFixedSize(true)
         layoutManager = LinearLayoutManager(requireContext())
         recyclerView.layoutManager = layoutManager
-        AppListViewModel.setContext(requireContext())
-        BlockedConnectionsViewModel.setContext(requireContext())
-        recyclerRulesAdapter = UniversalBlockedRulesAdapter(requireContext())
-        recyclerAdapter = UniversalAppListAdapter(requireContext())
+        recyclerRulesAdapter = UniversalBlockedRulesAdapter(requireContext(), blockedConnectionsRepository)
+        recyclerAdapter = UniversalAppListAdapter(requireContext(), appInfoRepository, get(), persistentState)
         recyclerView.adapter = recyclerRulesAdapter
         ipSearchView.requestFocus()
 
@@ -178,49 +182,40 @@ class UniversalFirewallFragment : Fragment() , SearchView.OnQueryTextListener {
         udpBlockToggle = includeView.findViewById(R.id.firewall_udp_connection_mode_check)
         udpBlockToggleText = includeView.findViewById(R.id.firewall_udp_connection_mode_txt)
 
-        firewallAllAppsToggle.isChecked = PersistentState.getFirewallModeForScreenState(requireContext())
+        firewallAllAppsToggle.isChecked = persistentState.getFirewallModeForScreenState()
 
-        if(Utilities.isAccessibilityServiceEnabledEnhanced(requireContext(), BackgroundAccessibilityService::class.java)){
-            if(DEBUG) Log.d(LOG_TAG,"Background - onLoad accessibility is true")
-            backgroundModeToggle.isChecked = PersistentState.getBackgroundEnabled(requireContext())
-        }else{
-            if(DEBUG) Log.d(LOG_TAG,"Background - onLoad accessibility is true, changed pref")
-            PersistentState.setBackgroundEnabled(requireContext(), false)
-            backgroundModeToggle.isChecked = false
-        }
-
-        udpBlockToggle.isChecked = PersistentState.getUDPBlockedSettings(requireContext())
-        unknownToggle.isChecked =  PersistentState.getBlockUnknownConnections(requireContext())
+        udpBlockToggle.isChecked = persistentState.udpBlockedSettings
+        unknownToggle.isChecked =  persistentState.blockUnknownConnections
 
         firewallAllAppsToggle.setOnCheckedChangeListener { _, b ->
-            PersistentState.setFirewallModeForScreenState(requireContext(), b)
+            persistentState.setFirewallModeForScreenState(b)
         }
 
         firewallAllAppsTxt.setOnClickListener {
-            if(PersistentState.getFirewallModeForScreenState(requireContext())){
+            if(persistentState.getFirewallModeForScreenState()){
                 firewallAllAppsToggle.isChecked = false
-                PersistentState.setFirewallModeForScreenState(requireContext(), false)
+                persistentState.setFirewallModeForScreenState(false)
             }else{
                 firewallAllAppsToggle.isChecked = true
-                PersistentState.setFirewallModeForScreenState(requireContext(), true)
+                persistentState.setFirewallModeForScreenState(true)
             }
         }
 
         unknownToggle.setOnCheckedChangeListener{ compoundButton: CompoundButton, b: Boolean ->
-            PersistentState.setBlockUnknownConnections(requireContext(), b)
+            persistentState.blockUnknownConnections = b
         }
 
         unknownToggleText.setOnClickListener {
-            PersistentState.setBlockUnknownConnections(requireContext(), !unknownToggle.isChecked)
+            persistentState.blockUnknownConnections = !unknownToggle.isChecked
             unknownToggle.isChecked = !unknownToggle.isChecked
         }
 
         udpBlockToggle.setOnCheckedChangeListener{ compoundButton: CompoundButton, b: Boolean ->
-            PersistentState.setUDPBlockedSettings(requireContext(), b)
+            persistentState.udpBlockedSettings = b
         }
 
         udpBlockToggleText.setOnClickListener{
-            PersistentState.setUDPBlockedSettings(requireContext(), !udpBlockToggle.isChecked)
+            persistentState.udpBlockedSettings = !udpBlockToggle.isChecked
             udpBlockToggle.isChecked = !udpBlockToggle.isChecked
         }
 
@@ -233,18 +228,24 @@ class UniversalFirewallFragment : Fragment() , SearchView.OnQueryTextListener {
             val checkedVal = backgroundModeToggle.isChecked
             if(!checkedVal) {
                 if (Utilities.isAccessibilityServiceEnabledEnhanced(requireContext(), BackgroundAccessibilityService::class.java)) {
+                    if(!Utilities.isAccessibilityServiceEnabled(requireContext(), BackgroundAccessibilityService::class.java)){
+                        if (!showAlertForPermission(true)) {
+                            backgroundModeToggle.isChecked = false
+                            persistentState.setIsBackgroundEnabled(false)
+                        }
+                    }
                     GlobalVariable.isBackgroundEnabled = !checkedVal
-                    PersistentState.setBackgroundEnabled(requireContext(), !checkedVal)
+                    persistentState.setIsBackgroundEnabled(!checkedVal)
                     backgroundModeToggle.isChecked = !checkedVal
                 } else {
-                    if (!showAlertForPermission()) {
+                    if (!showAlertForPermission(false)) {
                         backgroundModeToggle.isChecked = false
-                        PersistentState.setBackgroundEnabled(requireContext(), false)
+                        persistentState.setIsBackgroundEnabled(false)
                     }
                 }
             }else{
                 backgroundModeToggle.isChecked = false
-                PersistentState.setBackgroundEnabled(requireContext(), false)
+                persistentState.setIsBackgroundEnabled(false)
             }
         }
 
@@ -254,32 +255,36 @@ class UniversalFirewallFragment : Fragment() , SearchView.OnQueryTextListener {
             val checkedVal = !backgroundModeToggle.isChecked
             if (!checkedVal) {
                 if (Utilities.isAccessibilityServiceEnabledEnhanced(requireContext(), BackgroundAccessibilityService::class.java)) {
+                    if(!Utilities.isAccessibilityServiceEnabled(requireContext(), BackgroundAccessibilityService::class.java)){
+                        if (!showAlertForPermission(true)) {
+                            backgroundModeToggle.isChecked = false
+                            persistentState.setIsBackgroundEnabled(false)
+                        }
+                    }
                     GlobalVariable.isBackgroundEnabled = !checkedVal
-                    PersistentState.setBackgroundEnabled(requireContext(), !checkedVal)
+                    persistentState.setIsBackgroundEnabled(!checkedVal)
                     backgroundModeToggle.isChecked = !checkedVal
                 } else {
-                    if (!showAlertForPermission()) {
+                    if (!showAlertForPermission(false)) {
                         backgroundModeToggle.isChecked = false
-                        PersistentState.setBackgroundEnabled(requireContext(), false)
+                        persistentState.setIsBackgroundEnabled(false)
                     }
                 }
             } else {
                 backgroundModeToggle.isChecked = false
-                PersistentState.setBackgroundEnabled(requireContext(), false)
+                persistentState.setIsBackgroundEnabled(false)
             }
         }
 
-        val mDb = AppDatabase.invoke(requireContext().applicationContext)
-        val appInfoRepository = mDb.appInfoRepository()
         val appCount = GlobalVariable.appList.size
         val act: FirewallActivity = requireContext() as FirewallActivity
-        appInfoRepository.getWhitelistCountLiveData().observe(act, Observer {
+        appInfoRepository.getWhitelistCountLiveData().observe(act, {
             whitelistCountTxt.text = "$it/$appCount apps whitelisted."
         })
 
         whiteListHeader.setOnClickListener{
             whiteListHeader.isEnabled = false
-            val customDialog = WhitelistAppDialog(requireContext(), recyclerAdapter!!,appInfoViewModel)
+            val customDialog = WhitelistAppDialog(requireContext(), appInfoRepository, get(), recyclerAdapter!!,appInfoViewModel)
             //if we know that the particular variable not null any time ,we can assign !!
             // (not null operator ), then  it won't check for null, if it becomes null,
             // it will throw exception
@@ -331,8 +336,6 @@ class UniversalFirewallFragment : Fragment() , SearchView.OnQueryTextListener {
     }
 
     private fun showDialogForDelete() {
-        val mDb = AppDatabase.invoke(requireContext().applicationContext)
-        val blockedConnectionsRepository = mDb.blockedConnectionRepository()
         val count = blockedConnectionsRepository.getBlockedConnectionsCount()
         if(count > 0) {
             val builder = AlertDialog.Builder(requireContext())
@@ -365,16 +368,33 @@ class UniversalFirewallFragment : Fragment() , SearchView.OnQueryTextListener {
 
     override fun onResume() {
         super.onResume()
-        unknownToggle.isChecked =  PersistentState.getBlockUnknownConnections(requireContext())
+        unknownToggle.isChecked =  persistentState.blockUnknownConnections
+        if (Utilities.isAccessibilityServiceEnabledEnhanced(requireContext(), BackgroundAccessibilityService::class.java)) {
+            if (DEBUG) Log.d(LOG_TAG, "Background - onLoad accessibility is true")
+            backgroundModeToggle.isChecked = persistentState.backgroundEnabled
+        } else {
+            if (DEBUG) Log.d(LOG_TAG, "Background - onLoad accessibility is true, changed pref")
+            persistentState.setIsBackgroundEnabled(false)
+            backgroundModeToggle.isChecked = false
+        }
     }
 
-    private fun showAlertForPermission() : Boolean {
+    private fun showAlertForPermission(isRegrant : Boolean) : Boolean {
         var isAllowed  = false
         val builder = AlertDialog.Builder(requireContext())
         //set title for alert dialog
-        builder.setTitle(R.string.alert_permission_accessibility)
+        if(isRegrant){
+            builder.setTitle(R.string.alert_permission_accessibility_regrant)
+        }else {
+            builder.setTitle(R.string.alert_permission_accessibility)
+        }
         //set message for alert dialog
-        builder.setMessage(R.string.alert_firewall_accessibility_explanation)
+        if(isRegrant){
+            builder.setMessage(R.string.alert_firewall_accessibility_regrant_explanation)
+        }else{
+            builder.setMessage(R.string.alert_firewall_accessibility_explanation)
+        }
+
         builder.setIcon(android.R.drawable.ic_dialog_alert)
         //performing positive action
         builder.setPositiveButton("Grant"){ _, _ ->

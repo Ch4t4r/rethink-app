@@ -37,7 +37,7 @@
                 android:layout_weight="1"
                 android:gravity="center"
                 android:orientation="vertical"
-                android:paddingTop="10dp">
+                android:padding="10dp">
 
                 <com.facebook.shimmer.ShimmerFrameLayout
                     android:id="@+id/shimmer_view_heading"
@@ -45,7 +45,7 @@
                     android:layout_height="wrap_content"
                     app:shimmer_base_color="@color/primaryText"
                     app:shimmer_duration="30000"
-                    app:shimmer_repeat_delay="10000"
+                    app:shimmer_repeat_delay="20000"
                     app:shimmer_colored="true"
                     app:shimmer_width_ratio="1.5"
                     app:shimmer_shape="radial"
@@ -58,7 +58,7 @@
                         android:orientation="vertical">
 
                         <androidx.appcompat.widget.AppCompatTextView
-                            android:id="@+id/tv_app_installed"
+                            android:id="@+id/fhs_title_rethink"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_gravity="center"
@@ -71,7 +71,7 @@
                             android:visibility="visible" />
 
                         <androidx.appcompat.widget.AppCompatTextView
-                            android:id="@+id/tv_app_"
+                            android:id="@+id/fhs_title_rethink_desc"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_gravity="center"
@@ -128,7 +128,8 @@
             android:id="@+id/fhs_card_home_top_tile"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_margin="10dp"
+            android:layout_marginStart="10dp"
+            android:layout_marginEnd="10dp"
             android:visibility="visible"
             app:cardElevation="@dimen/activity_horizontal_margin">
 
@@ -457,14 +458,15 @@
 
             <androidx.appcompat.widget.AppCompatButton
                 android:id="@+id/chip_configure_firewall"
-                style="@android:style/Widget.TextView"
+                style="@android:style/Widget.Button"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="0.5"
                 android:foreground="?attr/selectableItemBackground"
                 android:textAlignment="center"
-                android:background="@color/colorPrimaryDark"
+                android:background="@drawable/rounded_corners_button_primary"
                 android:clickable="true"
+                android:stateListAnimator="@null"
                 android:drawableStart="@drawable/spinner_firewall"
                 android:paddingStart="10dp"
                 android:paddingEnd="10dp"
@@ -474,16 +476,18 @@
 
             <androidx.appcompat.widget.AppCompatButton
                 android:id="@+id/chip_view_logs"
-                style="@android:style/Widget.TextView"
+                style="@android:style/Widget.Button"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="10dp"
+                android:stateListAnimator="@null"
                 android:layout_weight="0.5"
                 android:clickable="true"
                 android:focusable="true"
+                android:elevation="16dp"
                 android:foreground="?attr/selectableItemBackground"
                 android:textAlignment="center"
-                android:background="@color/colorPrimaryDark"
+                android:background="@drawable/rounded_corners_button_primary"
                 android:drawableStart="@drawable/spinner_dns"
                 android:paddingStart="10dp"
                 android:paddingEnd="10dp"
@@ -535,39 +539,13 @@
             android:layout_height="wrap_content"
             android:layout_marginLeft="20dp"
             android:layout_marginRight="20dp"
-            android:layout_marginBottom="80dp"
+            android:layout_marginBottom="90dp"
             android:layout_weight="0.3"
             android:gravity="bottom|center"
             android:orientation="vertical">
 
 
-            <!-- <com.celzero.bravedns.animation.RippleBackground
-                 android:id="@+id/content"
-                 android:layout_width="wrap_content"
-                 android:layout_height="wrap_content"
-                 app:rb_color="@color/rippleColor"
-                 app:rb_duration="6000"
-                 app:rb_radius="18dp"
-                 android:layoutDirection="ltr"
-                 app:rb_rippleAmount="3"
-                 app:rb_scale="3"
-                 app:rb_type="fillRipple">
 
-                 <androidx.appcompat.widget.AppCompatButton
-                     android:id="@+id/fhs_dns_on_off_btn"
-                     android:layout_width="wrap_content"
-                     android:layout_height="wrap_content"
-                     android:layout_centerHorizontal="true"
-                     android:background="@drawable/ic_icon_circle"
-                     android:fontFamily="sans-serif-smallcaps"
-                     android:gravity="center"
-                     android:text="start"
-                     android:textColor="@color/primaryText"
-                     android:textSize="@dimen/home_screen_stat_text"
-                     android:textStyle="normal" />
-
-
-             </com.celzero.bravedns.animation.RippleBackground>-->
             <com.facebook.shimmer.ShimmerFrameLayout
                 android:id="@+id/shimmer_view_container1"
                 android:layout_width="match_parent"
@@ -577,34 +555,34 @@
                 app:shimmer_duration="1000"
                 app:shimmer_highlight_alpha="0.35">
 
-                <RelativeLayout
+                <FrameLayout
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="10dp"
-                    android:layout_marginBottom="10dp"
-                    android:orientation="horizontal">
+                    android:layout_height="wrap_content">
 
                     <androidx.appcompat.widget.AppCompatButton
                         android:id="@+id/fhs_dns_on_off_btn"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:background="@color/button_background"
+                        android:background="@drawable/rounded_corners_button_primary"
+                        android:drawableEnd="@drawable/ic_arrow_down"
                         android:fontFamily="sans-serif-condensed-medium"
+                        android:paddingStart="39dp"
+                        android:paddingEnd="10dp"
                         android:gravity="center"
                         android:text="Start"
+                        android:stateListAnimator="@null"
                         android:textColor="@color/white"
                         android:textSize="@dimen/home_screen_stat_text" />
 
-                    <androidx.appcompat.widget.AppCompatImageView
+                    <Button
                         android:id="@+id/home_fragment_bottom_sheet_icon"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_alignParentEnd="true"
-                        android:background="@color/button_background"
-                        android:elevation="2dp"
-                        android:padding="8dp"
-                        android:src="@drawable/ic_arrow_down" />
-                </RelativeLayout>
+                        android:layout_width="50dp"
+                        android:layout_height="49dp"
+                        android:layout_gravity="end"
+                        android:background="?android:attr/selectableItemBackground"
+                        android:padding="10dp"
+                        android:text=" " />
+                </FrameLayout>
             </com.facebook.shimmer.ShimmerFrameLayout>
 
             <androidx.appcompat.widget.AppCompatTextView
@@ -613,6 +591,7 @@
                 android:layout_height="wrap_content"
                 android:fontFamily="sans-serif-smallcaps"
                 android:text="not connected"
+                android:layout_marginTop="10dp"
                 android:textColor="@color/accent_bad"
                 android:textSize="@dimen/large_font_text_view" />
 

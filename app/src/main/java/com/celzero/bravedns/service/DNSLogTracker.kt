@@ -18,12 +18,10 @@ package com.celzero.bravedns.service
 
 import android.content.Context
 import android.util.Log
-import com.celzero.bravedns.database.AppDatabase
+import com.celzero.bravedns.database.DNSLogRepository
 import com.celzero.bravedns.database.DNSLogs
 import com.celzero.bravedns.net.dns.DnsPacket
 import com.celzero.bravedns.net.doh.Transaction
-import com.celzero.bravedns.service.PersistentState.Companion.setBlockedReq
-import com.celzero.bravedns.service.PersistentState.Companion.setNumOfReq
 import com.celzero.bravedns.ui.HomeScreenActivity
 import com.celzero.bravedns.util.Constants.Companion.DNS_TYPE_DNS_CRYPT
 import com.celzero.bravedns.util.Constants.Companion.DNS_TYPE_DOH
@@ -37,29 +35,21 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import java.net.InetAddress
 import java.net.ProtocolException
+import java.net.UnknownHostException
 
-class DNSLogTracker(var context: Context?) {
-
-    var mDb : AppDatabase ?= null
-
-   private fun getDBInstance(context: Context): AppDatabase? {
-       if(mDb == null) {
-           mDb = AppDatabase.invoke(context.applicationContext)
-       }
-       return mDb
-   }
+class DNSLogTracker internal constructor(private val dnsLogRepository: DNSLogRepository,
+                                         private val persistentState:PersistentState,
+                                         private val context: Context) {
 
     @Synchronized
-    fun recordTransaction(context: Context?, transaction: Transaction?) {
-        if (context != null && transaction != null) {
-            insertToDB(context, transaction)
+    fun recordTransaction(transaction: Transaction?) {
+        if (transaction != null) {
+            insertToDB(transaction)
         }
     }
 
-    private fun insertToDB(context: Context, transaction: Transaction) {
+    private fun insertToDB(transaction: Transaction) {
         GlobalScope.launch(Dispatchers.IO) {
-            val mDb = getDBInstance(context)
-            val dnsLogRepository = mDb!!.dnsLogRepository()
             val dnsLogs = DNSLogs()
 
             dnsLogs.blockLists = transaction.blockList
@@ -70,7 +60,7 @@ class DNSLogTracker(var context: Context?) {
                 dnsLogs.dnsType = DNS_TYPE_DOH
                 dnsLogs.relayIP = ""
             }
-            dnsLogs.latency = transaction.responseTime - transaction.queryTime
+            dnsLogs.latency = transaction.responseTime// - transaction.queryTime
             dnsLogs.queryStr = transaction.name
             dnsLogs.blockLists = transaction.blockList
             dnsLogs.responseTime = transaction.responseTime
@@ -81,7 +71,11 @@ class DNSLogTracker(var context: Context?) {
 
             try {
                 val serverAddress = if (transaction.serverIp != null) {
-                    InetAddress.getByName(transaction.serverIp)
+                    try {
+                        InetAddress.getByName(transaction.serverIp)
+                    }catch(ex : UnknownHostException){
+                        null
+                    }
                 } else {
                     null
                 }
@@ -141,14 +135,10 @@ class DNSLogTracker(var context: Context?) {
                 }
             }
             if(dnsLogs.isBlocked){
-                setBlockedReq(context)
+                persistentState.incrementBlockedReq()
             }
-            setNumOfReq(context)
+            persistentState.setNumOfReq()
             dnsLogRepository.insertAsync(dnsLogs)
         }
     }
-
-
-
-
 }
