@@ -1,2 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources></resources>
+<resources>
+    <string name="warning_channel_name" description="This is the name of the class of notifications that show warnings.  It's only   visible in the system's advanced notifications settings page.">අවවාදයයි</string>
+    <string name="skip">මඟ හරින්න</string>
+    <string name="slide_1_title">සාදරයෙන් පිළිගනිමු</string>
+    <string name="slide_2_title">සාදරයෙන් පිළිගනිමු</string>
+    <string name="next">ඊලඟ</string>
+    <string name="txt_home">මුුල් පිටුව</string>
+    <string name="action_do_nothing">කිසිවක් නොකරන්න</string>
+    <string name="title_settings">සැකසුම්</string>
+    <string name="title_about">පිළිබඳව</string>
+</resources>
